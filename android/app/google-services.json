@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "458723311102",
+    "project_id": "efootball-76fcf",
+    "storage_bucket": "efootball-76fcf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:458723311102:android:2b5cfeaafc17589b7094af",
+        "android_client_info": {
+          "package_name": "com.efootball.efootball_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBbjVaUnBwCFEwnhGLXvywdvypPX47lckY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
