@@ -7,7 +7,8 @@ import '../../theme/app_theme.dart';
 import 'dart:math';
 
 class LeagueStatsView extends StatelessWidget {
-  const LeagueStatsView({super.key});
+  final String tournamentId;
+  const LeagueStatsView({super.key, required this.tournamentId});
 
   @override
   Widget build(BuildContext context) {
@@ -17,15 +18,17 @@ class LeagueStatsView extends StatelessWidget {
     // Create a map of teams for quick lookup
     final Map<String, Team> teamMap = {for (var t in allTeams) t.id: t};
 
-    if (standings.isEmpty || allTeams.isEmpty) {
-      return const Center(child: Text("Loading Analytics...", style: TextStyle(color: Colors.grey)));
+    final filteredStandings = standings.where((s) => s.tournamentId == tournamentId).toList();
+
+    if (filteredStandings.isEmpty || allTeams.isEmpty) {
+      return const Center(child: Text("Not enough data to generate analytics.", style: TextStyle(color: Colors.grey)));
     }
 
     // Compute exact mathematical grid bounds with padding
-    double minGD = standings.map((e) => e.goalDifference).reduce(min).toDouble();
-    double maxGD = standings.map((e) => e.goalDifference).reduce(max).toDouble();
-    double minPts = standings.map((e) => e.points).reduce(min).toDouble();
-    double maxPts = standings.map((e) => e.points).reduce(max).toDouble();
+    double minGD = filteredStandings.map((e) => e.goalDifference).reduce(min).toDouble();
+    double maxGD = filteredStandings.map((e) => e.goalDifference).reduce(max).toDouble();
+    double minPts = filteredStandings.map((e) => e.points).reduce(min).toDouble();
+    double maxPts = filteredStandings.map((e) => e.points).reduce(max).toDouble();
 
     // Prevent divide by zero if data is completely flat
     if (minGD == maxGD) { minGD -= 10; maxGD += 10; }
@@ -58,7 +61,7 @@ class LeagueStatsView extends StatelessWidget {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))
                 ],
               ),
               child: Stack(
@@ -86,7 +89,7 @@ class LeagueStatsView extends StatelessWidget {
                       const double logoSize = 32.0;
 
                       return Stack(
-                        children: standings.map((stat) {
+                        children: filteredStandings.map((stat) {
                           final team = teamMap[stat.teamId];
                           if (team == null) return const SizedBox.shrink();
 
@@ -119,7 +122,7 @@ class LeagueStatsView extends StatelessWidget {
                               child: Container(
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2))],
+                                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 4, offset: const Offset(0, 2))],
                                   color: Colors.white,
                                 ),
                                 child: ClipOval(
@@ -140,11 +143,11 @@ class LeagueStatsView extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(width: 12, height: 12, color: AppTheme.accentGreen.withOpacity(0.2)),
+              Container(width: 12, height: 12, color: AppTheme.accentGreen.withValues(alpha: 0.2)),
               const SizedBox(width: 8),
               const Text("Top Performers", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
               const SizedBox(width: 24),
-              Container(width: 12, height: 12, color: AppTheme.redForm.withOpacity(0.2)),
+              Container(width: 12, height: 12, color: AppTheme.redForm.withValues(alpha: 0.2)),
               const SizedBox(width: 8),
               const Text("Underperforming", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
             ],
@@ -164,15 +167,15 @@ class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.grey.withOpacity(0.15)
+      ..color = Colors.grey.withValues(alpha: 0.15)
       ..strokeWidth = 1;
 
     final strongPaint = Paint()
-      ..color = Colors.grey.withOpacity(0.3)
+      ..color = Colors.grey.withValues(alpha: 0.3)
       ..strokeWidth = 1.5;
 
     final trendPaint = Paint()
-      ..color = AppTheme.primaryPurple.withOpacity(0.08)
+      ..color = AppTheme.primaryPurple.withValues(alpha: 0.08)
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 
@@ -186,14 +189,14 @@ class _GridPainter extends CustomPainter {
 
     // 2. Draw Multi-Layered Diagonal Trend Lines (The "Golden Path")
     // Main Trend Line (Expected Performance)
-    canvas.drawLine(Offset(0, size.height), Offset(size.width, 0), trendPaint..color = trendPaint.color.withOpacity(0.2));
+    canvas.drawLine(Offset(0, size.height), Offset(size.width, 0), trendPaint..color = trendPaint.color.withValues(alpha: 0.2));
     
     // Performance Corridors (Multiple lines for "clarity")
     for (double i = 0.1; i <= 0.4; i += 0.1) {
       // Upper Corridors
-      canvas.drawLine(Offset(0, size.height * (1 - i)), Offset(size.width * (1 - i), 0), trendPaint..color = trendPaint.color.withOpacity(0.05));
+      canvas.drawLine(Offset(0, size.height * (1 - i)), Offset(size.width * (1 - i), 0), trendPaint..color = trendPaint.color.withValues(alpha: 0.05));
       // Lower Corridors
-      canvas.drawLine(Offset(size.width * i, size.height), Offset(size.width, size.height * i), trendPaint..color = trendPaint.color.withOpacity(0.05));
+      canvas.drawLine(Offset(size.width * i, size.height), Offset(size.width, size.height * i), trendPaint..color = trendPaint.color.withValues(alpha: 0.05));
     }
 
     // 3. Labels for Trend Lines
@@ -207,8 +210,8 @@ class _GridPainter extends CustomPainter {
       canvas.drawLine(Offset(zeroX, 0), Offset(zeroX, size.height), strongPaint);
       
       // Define colors for visual quadrants
-      final greenPaint = Paint()..color = AppTheme.accentGreen.withOpacity(0.05)..style = PaintingStyle.fill;
-      final redPaint = Paint()..color = AppTheme.redForm.withOpacity(0.05)..style = PaintingStyle.fill;
+      final greenPaint = Paint()..color = AppTheme.accentGreen.withValues(alpha: 0.05)..style = PaintingStyle.fill;
+      final redPaint = Paint()..color = AppTheme.redForm.withValues(alpha: 0.05)..style = PaintingStyle.fill;
       
       // Top Right: Positive GD, Upper half points
       // We adjust Rect to follow the zeroX divider
@@ -223,7 +226,7 @@ class _GridPainter extends CustomPainter {
     final textPainter = TextPainter(
       text: TextSpan(
         text: text,
-        style: TextStyle(color: AppTheme.primaryPurple.withOpacity(0.3), fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 1),
+        style: TextStyle(color: AppTheme.primaryPurple.withValues(alpha: 0.3), fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 1),
       ),
       textDirection: TextDirection.ltr,
     );

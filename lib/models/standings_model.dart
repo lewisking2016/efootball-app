@@ -1,6 +1,8 @@
 class StandingsEntry {
   final int position;
+  final int previousPosition;
   final String teamId;
+  final String tournamentId;
   final int played;
   final int won;
   final int drawn;
@@ -13,7 +15,9 @@ class StandingsEntry {
 
   StandingsEntry({
     required this.position,
+    this.previousPosition = 0,
     required this.teamId,
+    required this.tournamentId,
     required this.played,
     required this.won,
     required this.drawn,
@@ -28,7 +32,9 @@ class StandingsEntry {
   factory StandingsEntry.fromMap(Map<String, dynamic> data, String documentId) {
     return StandingsEntry(
       position: data['position'] ?? 0,
+      previousPosition: data['previousPosition'] ?? (data['position'] ?? 0),
       teamId: data['teamId'] ?? '',
+      tournamentId: data['tournamentId'] ?? '',
       played: data['played'] ?? 0,
       won: data['won'] ?? 0,
       drawn: data['drawn'] ?? 0,
@@ -44,7 +50,9 @@ class StandingsEntry {
   Map<String, dynamic> toMap() {
     return {
       'position': position,
+      'previousPosition': previousPosition,
       'teamId': teamId,
+      'tournamentId': tournamentId,
       'played': played,
       'won': won,
       'drawn': drawn,

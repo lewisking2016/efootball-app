@@ -25,7 +25,7 @@ class TeamLogo extends StatelessWidget {
         height: size,
         fit: BoxFit.contain,
         filterQuality: FilterQuality.high,
-        errorBuilder: (_, __, ___) => Icon(Icons.broken_image, size: size, color: AppTheme.primaryPurple),
+        errorBuilder: (_, _, _) => Icon(Icons.broken_image, size: size, color: AppTheme.primaryPurple),
       );
     }
 
@@ -36,7 +36,7 @@ class TeamLogo extends StatelessWidget {
         height: size,
         fit: BoxFit.contain,
         filterQuality: FilterQuality.high,
-        errorBuilder: (_, __, ___) => Icon(Icons.broken_image, size: size, color: AppTheme.primaryPurple),
+        errorBuilder: (_, _, _) => Icon(Icons.broken_image, size: size, color: AppTheme.primaryPurple),
       );
     }
 
@@ -50,7 +50,7 @@ class TeamLogo extends StatelessWidget {
         height: size,
         fit: BoxFit.contain,
         filterQuality: FilterQuality.high,
-        errorBuilder: (_, __, ___) => Icon(Icons.broken_image, size: size, color: AppTheme.primaryPurple),
+        errorBuilder: (_, _, _) => Icon(Icons.broken_image, size: size, color: AppTheme.primaryPurple),
       );
     } catch (e) {
       return Icon(Icons.image_not_supported, size: size, color: AppTheme.primaryPurple);

@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum TournamentType { epl, uefa }
+enum TournamentType { epl, uefa, faCup }
 
 class Tournament {
   final String id;

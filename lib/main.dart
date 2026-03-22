@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
@@ -9,18 +10,75 @@ import 'screens/auth_screen.dart';
 import 'screens/main_navigation_screen.dart';
 import 'screens/team_profile_screen.dart';
 import 'data/firebase_service.dart';
+import 'data/notification_service.dart';
 import 'models/team_model.dart';
 import 'models/standings_model.dart';
+import 'models/match_model.dart';
+import 'models/tournament_model.dart';
 import 'screens/create_tournament_screen.dart';
+import 'screens/join_tournament_screen.dart';
+import 'screens/pick_team_screen.dart';
+// Removed unused import
+import 'package:workmanager/workmanager.dart';
+import 'package:flutter/foundation.dart'; // Added for kIsWeb and defaultTargetPlatform
+
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    try {
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+      }
+      
+      // 1. Handle Automations (Postponements / Auto-Results)
+      await FirebaseService().handleDelayedMatches();
+      
+      // 2. Handle Reminders
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final matches = await FirebaseService().getTeamMatchesTodaySync(user.uid);
+        if (matches.isNotEmpty) {
+          await NotificationService.initialize();
+          await NotificationService.showLocalNotification(
+            "⚽ Match Day Today!",
+            "Your team plays today! Don't forget to submit the result."
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("Background Task Error: $e");
+    }
+    return Future.value(true);
+  });
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Initialize Push Notifications
+  await NotificationService.initialize();
+
+  // Initialize Workmanager for Free Background Tasks (Android only for now)
+  if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.android)) {
+    await Workmanager().initialize(callbackDispatcher);
+    await Workmanager().registerPeriodicTask(
+      "match-day-check",
+      "checkTodayMatches",
+      frequency: const Duration(hours: 3), // Remind the user every 3 hours
+      constraints: Constraints(networkType: NetworkType.connected),
+    );
+  }
+  
+  // Explicitly enforce LOCAL persistence for web auto-login
+  await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+
 
   // Seed db initially if it's empty
-  await FirebaseService().seedInitialDatabase();
+  // await FirebaseService().seedInitialDatabase();
 
   runApp(const EFootballApp());
 }
@@ -76,6 +134,14 @@ final GoRouter _router = GoRouter(
       path: '/create-tournament',
       builder: (context, state) => const CreateTournamentScreen(),
     ),
+    GoRoute(
+      path: '/join-tournament',
+      builder: (context, state) => const JoinTournamentScreen(),
+    ),
+    GoRoute(
+      path: '/pick-team',
+      builder: (context, state) => const PickTeamScreen(),
+    ),
   ],
 );
 
@@ -97,9 +163,17 @@ class EFootballApp extends StatelessWidget {
           create: (_) => firebaseService.getStandings(),
           initialData: const [],
         ),
+        StreamProvider<List<Match>>(
+          create: (_) => firebaseService.getMatches(),
+          initialData: const [],
+        ),
+        StreamProvider<List<Tournament>>(
+          create: (_) => firebaseService.getTournaments(),
+          initialData: const [],
+        ),
       ],
       child: MaterialApp.router(
-        title: 'eFootball Pro League',
+        title: 'EFL Manager',
         theme: AppTheme.lightTheme,
         routerConfig: _router,
         debugShowCheckedModeBanner: false,

@@ -1,260 +1,359 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
-import 'dart:io';
-import 'dart:convert';
+import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../models/team_model.dart';
-import '../models/match_model.dart' as app_models;
+import '../models/match_model.dart';
+import '../models/tournament_model.dart';
+import '../models/app_user_model.dart';
 import '../data/firebase_service.dart';
+import '../widgets/line_decoration.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 
 class MatchSubmissionScreen extends StatefulWidget {
-  const MatchSubmissionScreen({super.key});
+  final Match? match; // If provided, we are updating an existing fixture
+  const MatchSubmissionScreen({super.key, this.match});
 
   @override
   State<MatchSubmissionScreen> createState() => _MatchSubmissionScreenState();
 }
 
 class _MatchSubmissionScreenState extends State<MatchSubmissionScreen> {
-  final ImagePicker _picker = ImagePicker();
-  File? _imageFile;
-  String? _base64Image;
-  bool _isProcessingImage = false;
-  
+  String? _selectedTournamentId;
+  String? _selectedMatchId;
   String? _selectedHomeTeamId;
   String? _selectedAwayTeamId;
+  DateTime _selectedDate = DateTime.now();
   int _homeScore = 0;
   int _awayScore = 0;
-  
-  bool _aiVerified = false;
 
-  Future<void> _pickAndAnalyzeImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image == null) return;
-
-    setState(() {
-      _imageFile = File(image.path);
-      _isProcessingImage = true;
-      _aiVerified = false;
-    });
-
-    try {
-      // 1. Convert to Base64
-      final bytes = await _imageFile!.readAsBytes();
-      _base64Image = base64Encode(bytes);
-
-      // 2. OCR Analysis
-      final inputImage = InputImage.fromFilePath(image.path);
-      final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
-      final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
-      
-      String extractedText = recognizedText.text;
-      
-      // Basic AI logic: Parse text for numbers and team names
-      // (In production, you'd use a regex or LLM to precisely parse scores like "ARS 2 - 0 MCI")
-      debugPrint("OCR Extracted Text: \n$extractedText");
-
-      // For demonstration, we assume OCR matched successfully if it found text
-      if (extractedText.isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("AI Image Analyzer successfully read the score!"), backgroundColor: AppTheme.accentGreen),
-        );
-        setState(() {
-          _aiVerified = true;
-        });
-      }
-
-      textRecognizer.close();
-    } catch (e) {
-      debugPrint("Error analyzing image: $e");
-    } finally {
-      setState(() {
-        _isProcessingImage = false;
-      });
+  @override
+  void initState() {
+    super.initState();
+    if (widget.match != null) {
+      _selectedTournamentId = widget.match!.tournamentId;
+      _selectedMatchId = widget.match!.id;
+      _selectedHomeTeamId = widget.match!.homeTeamId;
+      _selectedAwayTeamId = widget.match!.awayTeamId;
+      _selectedDate = widget.match!.date;
+      _homeScore = widget.match!.homeScore ?? 0;
+      _awayScore = widget.match!.awayScore ?? 0;
     }
   }
 
   Future<void> _submitMatch() async {
-    if (_selectedHomeTeamId == null || _selectedAwayTeamId == null || _base64Image == null) {
+    final firebaseService = context.read<FirebaseService>();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final profile = await firebaseService.getUserProfile(user.uid);
+    final isAdmin = profile?.isAdmin ?? false;
+    final userTeamId = profile?.teamId;
+
+    if (widget.match != null && !isAdmin) {
+      if (widget.match!.homeTeamId != userTeamId && widget.match!.awayTeamId != userTeamId) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Access Denied: You can only submit scores for matches involving your team."), backgroundColor: Colors.red),
+          );
+        }
+        return;
+      }
+    } else if (widget.match == null && !isAdmin) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Only admins can create manual results."), backgroundColor: Colors.red),
+        );
+      }
+      return;
+    }
+
+    if (_selectedHomeTeamId == null || _selectedAwayTeamId == null || _selectedTournamentId == null) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select teams and upload a screenshot proof.")),
+        const SnackBar(content: Text("Please select a tournament and teams.")),
       );
       return;
     }
 
     try {
-      final db = FirebaseFirestore.instance;
-      await db.collection('matches').add({
-        'homeTeamId': _selectedHomeTeamId,
-        'awayTeamId': _selectedAwayTeamId,
-        'homeScore': _homeScore,
-        'awayScore': _awayScore,
-        'status': _aiVerified ? 'Verified' : 'Pending',
-        'matchweek': '30', // Hardcoded matchweek for demo
-        'date': DateTime.now().toIso8601String(),
-        'screenshotBase64': _base64Image,
-        'aiVerified': _aiVerified,
-      });
-
-      if (_aiVerified && mounted) {
-        await context.read<FirebaseService>().updateStandings(
-          _selectedHomeTeamId!, _selectedAwayTeamId!, _homeScore, _awayScore
-        );
-      }
+      await firebaseService.submitMatchResult(
+        matchId: _selectedMatchId,
+        tournamentId: _selectedTournamentId!,
+        homeTeamId: _selectedHomeTeamId!,
+        awayTeamId: _selectedAwayTeamId!,
+        homeScore: _homeScore,
+        awayScore: _awayScore,
+        isAdmin: isAdmin,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Live Match Saved to Database!"), backgroundColor: AppTheme.primaryPurple),
+          const SnackBar(content: Text("Match Result Saved!"), backgroundColor: AppTheme.accentGreen),
         );
         Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red));
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final teams = context.watch<List<Team>>();
+    context.watch<List<Tournament>>(); // watched for reactivity
+    final allTeams = context.watch<List<Team>>();
+    final user = FirebaseAuth.instance.currentUser;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Submit Match Result"),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: AppTheme.headerGradient,
+    return FutureBuilder<AppUser?>(
+      future: context.read<FirebaseService>().getUserProfile(user?.uid ?? ''),
+      builder: (context, snapshot) {
+        final profile = snapshot.data;
+        final isAdmin = profile?.isAdmin ?? false;
+        final userTeamId = profile?.teamId;
+
+        bool isAuthorized = isAdmin;
+        if (!isAuthorized && widget.match != null) {
+          isAuthorized = widget.match!.homeTeamId == userTeamId || widget.match!.awayTeamId == userTeamId;
+        }
+
+        // ADDITIONAL LOCK: If already FT, only Admin can edit
+        final isLocked = (widget.match?.status == 'FT') && !isAdmin;
+        final canSubmit = isAuthorized && !isLocked;
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(widget.match?.status == 'FT' ? "Edit Result" : "Enter Match Result"),
+            backgroundColor: AppTheme.primaryPurple,
+            foregroundColor: Colors.white,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () {
+                if (Navigator.canPop(context)) {
+                  Navigator.of(context).pop();
+                } else {
+                  context.go('/home');
+                }
+              },
+            ),
           ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text("1. Select Teams", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.primaryPurple)),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(labelText: "Home Team", border: OutlineInputBorder()),
-              value: _selectedHomeTeamId,
-              items: teams.map((team) => DropdownMenuItem(value: team.id, child: Text(team.name))).toList(),
-              onChanged: (val) => setState(() => _selectedHomeTeamId = val),
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(labelText: "Away Team", border: OutlineInputBorder()),
-              value: _selectedAwayTeamId,
-              items: teams.map((team) => DropdownMenuItem(value: team.id, child: Text(team.name))).toList(),
-              onChanged: (val) => setState(() => _selectedAwayTeamId = val),
-            ),
-            const SizedBox(height: 32),
-            
-            const Text("2. Upload Match Screenshot (Proof)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.primaryPurple)),
-            const SizedBox(height: 16),
-            
-            GestureDetector(
-              onTap: _pickAndAnalyzeImage,
-              child: Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  color: AppTheme.cardColorLight,
-                  border: Border.all(color: _aiVerified ? AppTheme.accentGreen : AppTheme.primaryPurple, width: 2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: _imageFile != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Stack(
-                          fit: StackFit.expand,
+          body: Stack(
+            children: [
+              const LineDecoration(opacity: 0.05, spacing: 40),
+              SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (isLocked)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 20),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange.shade300),
+                        ),
+                        child: const Row(
                           children: [
-                            Image.file(_imageFile!, fit: BoxFit.cover),
-                            if (_aiVerified)
-                              Positioned(
-                                top: 8,
-                                right: 8,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(color: AppTheme.accentGreen, shape: BoxShape.circle),
-                                  child: const Icon(Icons.check, color: Colors.white, size: 24),
-                                ),
-                              )
+                            Icon(Icons.lock_clock_outlined, color: Colors.orange),
+                            SizedBox(width: 8),
+                            Expanded(child: Text("This result is finalized. Only admins can edit it.", style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 12))),
                           ],
                         ),
                       )
-                    : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.add_a_photo, size: 48, color: Colors.grey.shade400),
-                          const SizedBox(height: 8),
-                          Text("Tap to select image overlay", style: TextStyle(color: Colors.grey.shade600)),
-                        ],
+                    else if (!isAuthorized && widget.match != null)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 20),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.red.shade300),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.lock_outline, color: Colors.red),
+                            SizedBox(width: 8),
+                            Expanded(child: Text("Only the managers of these teams or admins can submit scores.", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12))),
+                          ],
+                        ),
                       ),
-              ),
-            ),
-            
-            if (_isProcessingImage)
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Center(child: CircularProgressIndicator(color: AppTheme.primaryPurple)),
-              ),
+                    const Text("Select Fixture", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.primaryPurple)),
+                    const SizedBox(height: 16),
+                    // Date Selection
+                    InkWell(
+                      onTap: widget.match != null ? null : () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _selectedDate,
+                          firstDate: DateTime(2024),
+                          lastDate: DateTime(2027),
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            _selectedDate = picked;
+                            _selectedMatchId = null; // Reset selection
+                            _selectedHomeTeamId = null;
+                            _selectedAwayTeamId = null;
+                            _selectedTournamentId = null;
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade400),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_today, color: AppTheme.primaryPurple),
+                            const SizedBox(width: 12),
+                            Text(
+                              DateFormat('EEEE, d MMMM yyyy').format(_selectedDate),
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                            ),
+                            const Spacer(),
+                            if (widget.match == null) const Icon(Icons.arrow_drop_down),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Fixture Dropdown
+                    StreamBuilder<List<Match>>(
+                      stream: context.read<FirebaseService>().getMatches(),
+                      builder: (context, snapshot) {
+                        final allMatches = snapshot.data ?? [];
+                        final dailyMatches = allMatches.where((m) {
+                          return m.status == 'Pending' && 
+                                 m.date.year == _selectedDate.year && 
+                                 m.date.month == _selectedDate.month && 
+                                 m.date.day == _selectedDate.day;
+                        }).toList();
 
-            if (_aiVerified)
-              Container(
-                margin: const EdgeInsets.only(top: 16),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: AppTheme.accentGreen.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
-                child: const Row(
-                  children: [
-                    Icon(Icons.auto_awesome, color: AppTheme.primaryPurple),
-                    SizedBox(width: 8),
-                    Expanded(child: Text("Image Analyzer verified Base64 match data successfully!", style: TextStyle(color: AppTheme.primaryPurple, fontWeight: FontWeight.bold))),
+                        // Ensure displayMatches contains our selected match if we're editing or have one selected
+                        List<Match> displayMatches = widget.match != null ? [widget.match!] : List<Match>.from(dailyMatches);
+                        if (_selectedMatchId != null && !displayMatches.any((m) => m.id == _selectedMatchId)) {
+                          final matchInAll = allMatches.where((m) => m.id == _selectedMatchId).firstOrNull;
+                          if (matchInAll != null) displayMatches.add(matchInAll);
+                        }
+
+                        // NEW: Auto-select if only one match and none selected
+                        if (widget.match == null && dailyMatches.length == 1 && _selectedMatchId == null) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) {
+                              setState(() {
+                                _selectedMatchId = dailyMatches.first.id;
+                                _selectedHomeTeamId = dailyMatches.first.homeTeamId;
+                                _selectedAwayTeamId = dailyMatches.first.awayTeamId;
+                                _selectedTournamentId = dailyMatches.first.tournamentId;
+                              });
+                            }
+                          });
+                        }
+
+                        return IgnorePointer(
+                          ignoring: widget.match != null,
+                          child: DropdownButtonFormField<String>(
+                            isExpanded: true,
+                            decoration: const InputDecoration(labelText: "Fixture", border: OutlineInputBorder()),
+                            initialValue: displayMatches.any((m) => m.id == _selectedMatchId) ? _selectedMatchId : null,
+                            hint: const Text("Select a match for this day"),
+                            items: displayMatches.map((m) {
+                              final home = allTeams.firstWhere((t) => t.id == m.homeTeamId, orElse: () => Team(id: '', name: 'TBD', shortName: '', logoUrl: '', managerId: '', managerName: ''));
+                              final away = allTeams.firstWhere((t) => t.id == m.awayTeamId, orElse: () => Team(id: '', name: 'TBD', shortName: '', logoUrl: '', managerId: '', managerName: ''));
+                              return DropdownMenuItem(
+                                value: m.id,
+                                child: Text("${home.name} vs ${away.name}"),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) {
+                                final selected = displayMatches.firstWhere((m) => m.id == val);
+                                setState(() {
+                                  _selectedMatchId = val;
+                                  _selectedHomeTeamId = selected.homeTeamId;
+                                  _selectedAwayTeamId = selected.awayTeamId;
+                                  _selectedTournamentId = selected.tournamentId;
+                                });
+                              }
+                            },
+                          ),
+                        );
+                      }
+                    ),
+                    const SizedBox(height: 40),
+                    const Text("Final Score", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.primaryPurple)),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildScoreField(
+                          label: "Home",
+                          initialValue: _homeScore,
+                          onChanged: (val) => _homeScore = val,
+                          enabled: !isLocked,
+                        ),
+                        const SizedBox(width: 32),
+                        const Text("-", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 32),
+                        _buildScoreField(
+                          label: "Away",
+                          initialValue: _awayScore,
+                          onChanged: (val) => _awayScore = val,
+                          enabled: !isLocked,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 60),
+                    ElevatedButton(
+                      onPressed: canSubmit ? _submitMatch : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: canSubmit ? AppTheme.primaryPurple : Colors.grey,
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: canSubmit ? 4 : 0,
+                      ),
+                      child: Text(
+                        isLocked ? "RESULT LOCKED" : (isAuthorized ? "SAVE RESULT" : "SUBMISSION LOCKED"), 
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)
+                      ),
+                    ),
                   ],
                 ),
               ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
-            const SizedBox(height: 32),
-            
-            const Text("3. Confirm Score", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.primaryPurple)),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    initialValue: _homeScore.toString(),
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: "Home Score", border: OutlineInputBorder()),
-                    onChanged: (val) => _homeScore = int.tryParse(val) ?? 0,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: TextFormField(
-                    initialValue: _awayScore.toString(),
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: "Away Score", border: OutlineInputBorder()),
-                    onChanged: (val) => _awayScore = int.tryParse(val) ?? 0,
-                  ),
-                ),
-              ],
+  Widget _buildScoreField({required String label, required int initialValue, required Function(int) onChanged, bool enabled = true}) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: 80,
+          child: TextFormField(
+            enabled: enabled,
+            initialValue: initialValue.toString(),
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            decoration: InputDecoration(
+              contentPadding: const EdgeInsets.symmetric(vertical: 16),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: _submitMatch,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryPurple,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              child: const Text("Submit Verified Result", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-            ),
-            const SizedBox(height: 40),
-          ],
+            onChanged: (val) => onChanged(int.tryParse(val) ?? 0),
+          ),
         ),
-      ),
+      ],
     );
   }
 }

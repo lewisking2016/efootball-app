@@ -5,6 +5,8 @@ import '../theme/app_theme.dart';
 import '../models/tournament_model.dart';
 import '../models/team_model.dart';
 import '../data/firebase_service.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+// Removed unused import
 
 class CreateTournamentScreen extends StatefulWidget {
   const CreateTournamentScreen({super.key});
@@ -27,8 +29,8 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
   final List<String> _availableLogos = [
     'arsenal.png', 'astonvilla.png', 'bournemouth.png', 'brentford.png',
     'brighton.png', 'burnley.png', 'chelsea.png', 'crystalpalace.png',
-    'everton.png', 'fulham.png', 'ipswich.png', 'leeds.png',
-    'leicester.png', 'liverpool.png', 'mancity.png', 'manutd.png',
+    'everton.png', 'fulham.svg', 'ipswich.png', 'leeds.png',
+    'leicester.png', 'liverpool.png', 'mancity.png', 'manunited.png',
     'newcastle.png', 'nottmforest.png', 'sheffieldutd.png', 'southampton.png',
     'sunderland.png', 'tottenham.png', 'westbrom.png', 'westham.png', 'wolves.png'
   ];
@@ -82,15 +84,15 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
         builder: (context) => const Center(child: CircularProgressIndicator(color: AppTheme.accentGreen)),
       );
 
-      // We need to implement this method in FirebaseService
       await firebaseService.createNewTournament(tournament, teams);
 
       if (mounted) {
         Navigator.pop(context); // Close loading
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Tournament created successfully!")),
+          const SnackBar(content: Text("✅ Tournament created! Fixtures generated.")),
         );
-        context.pop(); // Go back
+        // Navigate back to the home screen (which will auto-load the latest tournaments)
+        context.go('/home');
       }
     } catch (e) {
       if (mounted) {
@@ -110,6 +112,16 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
         title: const Text("Create Tournament", style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: AppTheme.primaryPurple,
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.of(context).pop();
+            } else {
+              context.go('/home');
+            }
+          },
+        ),
       ),
       body: Form(
         key: _formKey,
@@ -192,7 +204,7 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButtonFormField<TournamentType>(
-          value: _selectedType,
+          initialValue: _selectedType,
           decoration: const InputDecoration(border: InputBorder.none),
           items: const [
             DropdownMenuItem(value: TournamentType.epl, child: Text("Premier League Logic (Classic Table)")),
@@ -222,7 +234,9 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
                   radius: 25,
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: Image.asset('assets/logos/${team.logoAsset}'),
+                    child: team.logoAsset.endsWith('.svg') 
+                      ? SvgPicture.asset('assets/logos/${team.logoAsset}')
+                      : Image.asset('assets/logos/${team.logoAsset}'),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -231,14 +245,14 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
                     children: [
                       TextFormField(
                         initialValue: team.name,
-                        decoration: const InputDecoration(hintText: "Team Name", isDense: true, border: InputBorder.none),
+                        decoration: const InputDecoration(labelText: "Team Name (e.g. Chelsea)", isDense: true, border: InputBorder.none, labelStyle: TextStyle(fontSize: 12, color: AppTheme.primaryPurple)),
                         onChanged: (val) => team.name = val,
                         validator: (value) => value == null || value.isEmpty ? "Required" : null,
                       ),
                       const Divider(height: 1),
                       TextFormField(
                         initialValue: team.manager,
-                        decoration: const InputDecoration(hintText: "Manager/Player Name", isDense: true, border: InputBorder.none),
+                        decoration: const InputDecoration(labelText: "Player Name (e.g. John Doe)", isDense: true, border: InputBorder.none, labelStyle: TextStyle(fontSize: 12, color: AppTheme.primaryPurple)),
                         onChanged: (val) => team.manager = val,
                         validator: (value) => value == null || value.isEmpty ? "Required" : null,
                       ),
@@ -293,7 +307,9 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
                           border: Border.all(color: _teams[index].logoAsset == logo ? AppTheme.primaryPurple : Colors.transparent, width: 2),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Image.asset('assets/logos/$logo'),
+                        child: logo.endsWith('.svg')
+                          ? SvgPicture.asset('assets/logos/$logo')
+                          : Image.asset('assets/logos/$logo'),
                       ),
                     );
                   },

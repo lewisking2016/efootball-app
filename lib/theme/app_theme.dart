@@ -17,12 +17,21 @@ class AppTheme {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      Color(0xFF38003C),
-      Color(0xFF5A005D),
-      Color(0xFF8D008F),
-      Color(0xFFB000B2),
+      Color(0xFF1A0025), // Very deep EPL dark purple
+      Color(0xFF38003C), // EPL primary purple
+      Color(0xFF5C0070), // Mid purple
+      Color(0xFF6B007C), // EPL accent purple
     ],
-    stops: [0.0, 0.4, 0.8, 1.0],
+    stops: [0.0, 0.35, 0.7, 1.0],
+  );
+
+  static const LinearGradient eplGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFF00FF85), // EPL Green
+      Color(0xFF38003C), // EPL Purple
+    ],
   );
 
   static LinearGradient getTournamentGradient(String tournamentId) {
@@ -38,6 +47,8 @@ class AppTheme {
         end: Alignment.topRight,
         colors: [Color(0xFFEE1222), Color(0xFFFF5F5F)],
       );
+    } else if (tournamentId == 'epl') {
+      return eplGradient;
     }
     return headerGradient;
   }
@@ -52,7 +63,7 @@ class AppTheme {
         secondary: accentGreen,
         surface: cardColorLight,
         onSurface: textColorLight,
-        outline: Colors.grey.withOpacity(0.1),
+        outline: Colors.grey.withValues(alpha: 0.1),
       ),
       // PREMIUM TYPOGRAPHY: Inter for Body, Outfit for Headings
       textTheme: GoogleFonts.interTextTheme().copyWith(
@@ -73,6 +84,25 @@ class AppTheme {
           fontWeight: FontWeight.w800,
         ),
       ),
+    );
+  }
+
+  static InputDecoration getAuthInputDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: Colors.white70, fontSize: 13),
+      prefixIcon: Icon(icon, color: accentGreen, size: 20),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: accentGreen, width: 2),
+      ),
+      filled: true,
+      fillColor: Colors.white.withValues(alpha: 0.05),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     );
   }
 }

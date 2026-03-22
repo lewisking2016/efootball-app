@@ -4,12 +4,14 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../models/standings_model.dart';
 import '../../models/team_model.dart';
+import '../../models/tournament_model.dart';
 import '../../widgets/team_logo.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:go_router/go_router.dart';
 
 class StandingsTableView extends StatefulWidget {
-  const StandingsTableView({super.key});
+  final String tournamentId;
+  const StandingsTableView({super.key, required this.tournamentId});
 
   @override
   State<StandingsTableView> createState() => _StandingsTableViewState();
@@ -18,39 +20,13 @@ class StandingsTableView extends StatefulWidget {
 class _StandingsTableViewState extends State<StandingsTableView> {
   String _currentTab = 'Full'; // Short, Full, Form
 
-  Widget _buildFilterChip(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withOpacity(0.15)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          )
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(label, style: const TextStyle(color: AppTheme.primaryPurple, fontSize: 13, fontWeight: FontWeight.w600)),
-          const SizedBox(width: 6),
-          const Icon(Icons.keyboard_arrow_down, size: 16, color: AppTheme.primaryPurple),
-        ],
-      ),
-    );
-  }
-
   Widget _buildTypeToggle() {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 20),
       height: 48,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppTheme.primaryPurple.withOpacity(0.05),
+        color: AppTheme.primaryPurple.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -64,7 +40,7 @@ class _StandingsTableViewState extends State<StandingsTableView> {
                   color: isSelected ? Colors.white : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: isSelected
-                      ? [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 4))]
+                      ? [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 4))]
                       : [],
                 ),
                 child: Center(
@@ -87,9 +63,9 @@ class _StandingsTableViewState extends State<StandingsTableView> {
 
   Widget _buildFormIcon(String result) {
     Color bgColor;
-    if (result == 'W') bgColor = AppTheme.accentGreen;
-    else if (result == 'L') bgColor = Colors.red;
-    else bgColor = Colors.grey.shade300;
+    if (result == 'W') { bgColor = AppTheme.accentGreen; }
+    else if (result == 'L') { bgColor = Colors.red; }
+    else { bgColor = Colors.grey.shade300; }
     
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 2),
@@ -102,12 +78,22 @@ class _StandingsTableViewState extends State<StandingsTableView> {
     );
   }
 
+  Widget _buildTrajectoryIcon(int prev, int current) {
+    if (prev == 0) return const SizedBox();
+    if (current < prev) return const Icon(Icons.arrow_drop_up, color: Colors.green, size: 20);
+    if (current > prev) return const Icon(Icons.arrow_drop_down, color: Colors.red, size: 20);
+    return Icon(Icons.remove, color: Colors.grey.shade400, size: 16);
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final isTablet = size.width > 600;
     final standings = context.watch<List<StandingsEntry>>();
     final allTeams = context.watch<List<Team>>();
+
+    final tournaments = context.watch<List<Tournament>>();
+    final selectedTournament = tournaments.firstWhere((t) => t.id == widget.tournamentId, orElse: () => Tournament(id: '', name: 'Loading...', region: '', type: TournamentType.epl, createdAt: DateTime.now()));
 
     // Create a map of teams for quick lookup
     final Map<String, Team> teamMap = {for (var t in allTeams) t.id: t};
@@ -130,9 +116,16 @@ class _StandingsTableViewState extends State<StandingsTableView> {
       );
     }
 
-    // Sort standings by position
-    final sortedStandings = List<StandingsEntry>.from(standings);
-    sortedStandings.sort((a, b) => a.position.compareTo(b.position));
+    // Filter and Sort standings
+    final sortedStandings = standings
+        .where((s) => s.tournamentId == widget.tournamentId)
+        .toList();
+        
+    sortedStandings.sort((a, b) {
+      if (b.points != a.points) return b.points.compareTo(a.points);
+      if (b.goalDifference != a.goalDifference) return b.goalDifference.compareTo(a.goalDifference);
+      return b.goalsFor.compareTo(a.goalsFor);
+    });
 
     return Container(
       color: AppTheme.lightBackground,
@@ -147,7 +140,7 @@ class _StandingsTableViewState extends State<StandingsTableView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "PREMIER LEAGUE 2025/26",
+                      selectedTournament.name.toUpperCase(),
                       style: GoogleFonts.outfit(
                         fontSize: isTablet ? 24 : 18, 
                         fontWeight: FontWeight.w900, 
@@ -155,22 +148,7 @@ class _StandingsTableViewState extends State<StandingsTableView> {
                         letterSpacing: 2,
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          _buildFilterChip('All Matchweeks'),
-                          const SizedBox(width: 8),
-                          _buildFilterChip('Home & Away'),
-                          const SizedBox(width: 16),
-                          Text(
-                            "Reset", 
-                            style: GoogleFonts.inter(color: Colors.grey.shade500, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ),
+                    const SizedBox(height: 12),
                     _buildTypeToggle(),
                   ],
                 ),
@@ -185,7 +163,7 @@ class _StandingsTableViewState extends State<StandingsTableView> {
                   color: Colors.white,
                   borderRadius: isTablet ? BorderRadius.circular(20) : BorderRadius.zero,
                   boxShadow: isTablet ? [
-                    BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10))
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 10))
                   ] : [],
                 ),
                 clipBehavior: Clip.antiAlias,
@@ -197,9 +175,10 @@ class _StandingsTableViewState extends State<StandingsTableView> {
                 headingTextStyle: TextStyle(color: Colors.grey.shade700, fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 0.5),
                 dataTextStyle: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textColorLight, fontSize: 14),
                 showCheckboxColumn: false,
-                headingRowColor: MaterialStateProperty.resolveWith<Color>((Set<MaterialState> states) => Colors.grey.shade50),
+                headingRowColor: WidgetStateProperty.resolveWith<Color>((Set<WidgetState> states) => Colors.grey.shade50),
                 headingRowHeight: 48,
-                dataRowHeight: 64,
+                dataRowMinHeight: 64,
+                dataRowMaxHeight: 64,
                 columns: [
                   const DataColumn(label: Text('Pos')),
                   const DataColumn(label: Text('Team')),
@@ -250,6 +229,8 @@ class _StandingsTableViewState extends State<StandingsTableView> {
                             ),
                             const SizedBox(width: 8),
                             Text(pos.toString(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 4),
+                            _buildTrajectoryIcon(standing.previousPosition, pos),
                           ],
                         ),
                       ),

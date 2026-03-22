@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../theme/app_theme.dart';
+import '../data/notification_service.dart';
 import 'submission_screen.dart';
 import 'matches_screen.dart';
 import 'explore_screen.dart';
-import 'latest_news_screen.dart';
 import 'tournaments_screen.dart';
 import 'more_screen.dart';
 
@@ -16,12 +17,24 @@ class MainNavigationScreen extends StatefulWidget {
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  int _currentIndex = 2; // Default to Matches (center)
+  int _currentIndex = 1; // Default to Matches (was 2)
+
+  @override
+  void initState() {
+    super.initState();
+    _saveToken();
+  }
+
+  void _saveToken() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await NotificationService.saveTokenToFirestore(user.uid);
+    }
+  }
 
   final List<Widget> _screens = [
-    const LatestNewsScreen(),
     const TournamentsScreen(),
-    const MatchesMainScreen(), // The core screen we built
+    const MatchesMainScreen(),
     const ExploreScreen(),
     const MoreScreen(),
   ];
@@ -36,7 +49,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, -5))
+            BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -5))
           ],
         ),
         child: BottomNavigationBar(
@@ -48,47 +61,38 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           unselectedItemColor: Colors.grey.shade400,
           showUnselectedLabels: true,
           selectedLabelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 0.5),
-          unselectedLabelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 11),
+          unselectedLabelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 11),
           items: [
             const BottomNavigationBarItem(
-              icon: Icon(Icons.article_outlined),
-              activeIcon: Icon(Icons.article),
-              label: 'LATEST',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.emoji_events_outlined),
-              activeIcon: Icon(Icons.emoji_events),
+              icon: Icon(Icons.emoji_events_outlined, size: 24),
+              activeIcon: Icon(Icons.emoji_events, size: 24),
               label: 'LEAGUES',
             ),
             BottomNavigationBarItem(
-              icon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _currentIndex == 2 ? AppTheme.primaryPurple : Colors.transparent,
-                ),
+              icon: Padding(
+                padding: const EdgeInsets.only(bottom: 2),
                 child: Icon(
-                  Icons.sports_soccer, 
-                  size: 26,
-                  color: _currentIndex == 2 ? Colors.white : AppTheme.primaryPurple.withOpacity(0.6),
+                  _currentIndex == 1 ? Icons.sports_soccer : Icons.sports_soccer_outlined,
+                  size: 28,
+                  color: _currentIndex == 1 ? AppTheme.primaryPurple : Colors.grey.shade400,
                 ),
               ),
               label: 'MATCHES',
             ),
             const BottomNavigationBarItem(
-              icon: Icon(Icons.explore_outlined),
-              activeIcon: Icon(Icons.explore),
+              icon: Icon(Icons.explore_outlined, size: 24),
+              activeIcon: Icon(Icons.explore, size: 24),
               label: 'EXPLORE',
             ),
             const BottomNavigationBarItem(
-              icon: Icon(Icons.more_horiz),
-              activeIcon: Icon(Icons.more_horiz, size: 28),
+              icon: Icon(Icons.more_horiz_outlined, size: 24),
+              activeIcon: Icon(Icons.more_horiz, size: 24),
               label: 'MORE',
             ),
           ],
         ),
       ),
-      floatingActionButton: _currentIndex == 2 ? FloatingActionButton.extended(
+      floatingActionButton: _currentIndex == 1 ? FloatingActionButton.extended(
         backgroundColor: AppTheme.accentGreen,
         onPressed: () {
           Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MatchSubmissionScreen()));

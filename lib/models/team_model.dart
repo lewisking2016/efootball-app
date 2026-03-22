@@ -4,7 +4,9 @@ class Team {
   final String shortName;
   final String logoUrl;
   final String managerId;
-  final String managerName;
+  String managerName;
+  String? playerId;
+  String? playerEmail;
 
   Team({
     required this.id,
@@ -13,6 +15,8 @@ class Team {
     required this.logoUrl,
     required this.managerId,
     required this.managerName,
+    this.playerId,
+    this.playerEmail,
   });
 
   factory Team.fromMap(Map<String, dynamic> data, String documentId) {
@@ -23,6 +27,8 @@ class Team {
       logoUrl: data['logoUrl'] ?? '',
       managerId: data['managerId'] ?? '',
       managerName: data['managerName'] ?? 'Unknown',
+      playerId: data['playerId'],
+      playerEmail: data['playerEmail'],
     );
   }
 
@@ -33,6 +39,8 @@ class Team {
       'logoUrl': logoUrl,
       'managerId': managerId,
       'managerName': managerName,
+      'playerId': playerId,
+      'playerEmail': playerEmail,
     };
   }
 }

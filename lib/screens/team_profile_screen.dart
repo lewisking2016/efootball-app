@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:math';
 import '../models/team_model.dart';
 import '../models/standings_model.dart';
+import '../models/match_model.dart' as model;
+import '../data/firebase_service.dart';
 import '../widgets/team_logo.dart';
 import '../theme/app_theme.dart';
+import 'package:intl/intl.dart';
 
 class TeamProfileScreen extends StatelessWidget {
   final String teamId;
@@ -34,8 +38,8 @@ class TeamProfileScreen extends StatelessWidget {
       
       int currentPoints = teamStats.points;
       for (String result in teamStats.form.reversed) {
-        if (result == 'W') currentPoints -= 3;
-        else if (result == 'D') currentPoints -= 1;
+        if (result == 'W') { currentPoints -= 3; }
+        else if (result == 'D') { currentPoints -= 1; }
       }
       
       spots.add(FlSpot(0, currentPoints.toDouble()));
@@ -68,6 +72,17 @@ class TeamProfileScreen extends StatelessWidget {
             expandedHeight: 250.0,
             floating: false,
             pinned: true,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () {
+                if (Navigator.canPop(context)) {
+                  Navigator.of(context).pop();
+                } else {
+                  context.go('/home');
+                }
+              },
+              tooltip: "Back to Home",
+            ),
             iconTheme: const IconThemeData(color: Colors.white),
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
@@ -96,7 +111,7 @@ class TeamProfileScreen extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           "Manager ID: ${team.managerId.isEmpty ? 'System' : team.managerId}",
-                          style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14),
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14),
                         ),
                       ],
                     ),
@@ -119,7 +134,7 @@ class TeamProfileScreen extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
                     ),
                     child: LineChart(
                       LineChartData(
@@ -148,7 +163,7 @@ class TeamProfileScreen extends StatelessWidget {
                             ),
                             belowBarData: BarAreaData(
                               show: true,
-                              color: AppTheme.primaryPurple.withOpacity(0.15),
+                              color: AppTheme.primaryPurple.withValues(alpha: 0.15),
                             ),
                           ),
                         ],
@@ -169,20 +184,92 @@ class TeamProfileScreen extends StatelessWidget {
                   const SizedBox(height: 32),
                   const Text("Recent Fixtures", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryPurple)),
                   const SizedBox(height: 16),
-                  Container(
-                    height: 200,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
-                    ),
-                    child: const Center(
-                      child: Text("History synchronized to live matches stream.", style: TextStyle(color: Colors.grey)),
-                    ),
+                  StreamBuilder<List<model.Match>>(
+                    stream: context.read<FirebaseService>().getMatches(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                      
+                      final teamMatches = snapshot.data!.where((m) => 
+                        (m.homeTeamId == teamId || m.awayTeamId == teamId) && 
+                        (m.status == 'FT' || m.status == 'Finished')
+                      ).toList();
+                      
+                      // Sort latest first
+                      teamMatches.sort((a, b) => b.date.compareTo(a.date));
+
+                      if (teamMatches.isEmpty) {
+                        return Container(
+                          height: 100,
+                          alignment: Alignment.center,
+                          child: Text("No finished matches yet.", style: TextStyle(color: Colors.grey.shade500)),
+                        );
+                      }
+
+                      return Column(
+                        children: teamMatches.take(5).map((m) => _buildMatchTile(m, allTeams)).toList(),
+                      );
+                    },
                   ),
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMatchTile(model.Match match, List<Team> allTeams) {
+    final home = allTeams.firstWhere((t) => t.id == match.homeTeamId, orElse: () => Team(id: '', name: 'TBD', shortName: '', logoUrl: '', managerId: '', managerName: ''));
+    final away = allTeams.firstWhere((t) => t.id == match.awayTeamId, orElse: () => Team(id: '', name: 'TBD', shortName: '', logoUrl: '', managerId: '', managerName: ''));
+    final isHome = match.homeTeamId == teamId;
+    final teamScore = isHome ? match.homeScore : match.awayScore;
+    final oppScore = isHome ? match.awayScore : match.homeScore;
+    
+    Color resultColor = Colors.grey;
+    if (teamScore! > oppScore!) { resultColor = AppTheme.accentGreen; }
+    else if (teamScore < oppScore) { resultColor = AppTheme.redForm; }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(color: resultColor.withValues(alpha: 0.1), shape: BoxShape.circle),
+            child: Center(
+              child: Text(
+                teamScore > oppScore ? "W" : (teamScore < oppScore ? "L" : "D"),
+                style: TextStyle(color: resultColor, fontWeight: FontWeight.bold, fontSize: 12),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isHome ? "vs ${away.name}" : "at ${home.name}",
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                Text(
+                  DateFormat('MMM d, yyyy').format(match.date),
+                  style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            "${match.homeScore} - ${match.awayScore}",
+            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.primaryPurple),
           ),
         ],
       ),
@@ -194,7 +281,7 @@ class TeamProfileScreen extends StatelessWidget {
       width: 100,
       padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
-        color: AppTheme.primaryPurple.withOpacity(0.05),
+        color: AppTheme.primaryPurple.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(

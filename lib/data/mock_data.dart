@@ -4,7 +4,7 @@ class MockData {
       'pos': 1, 
       'name': 'Sunderland', 
       'manager': 'Lewis',
-      'logo': 'https://upload.wikimedia.org/wikipedia/en/thumb/7/77/Logo_Sunderland_AFC.svg/300px-Logo_Sunderland_AFC.svg.png', 
+      'logo': 'assets/logos/sunderland.png', 
       'pl': 0, 'w': 0, 'd': 0, 'l': 0, 'gf': 0, 'ga': 0, 'gd': 0, 'pts': 0, 
       'form': []
     },
@@ -12,7 +12,7 @@ class MockData {
       'pos': 2, 
       'name': 'Manchester City', 
       'manager': 'Martin',
-      'logo': 'https://upload.wikimedia.org/wikipedia/en/thumb/e/eb/Manchester_City_FC_badge.svg/1200px-Manchester_City_FC_badge.svg.png', 
+      'logo': 'assets/logos/mancity.png', 
       'pl': 0, 'w': 0, 'd': 0, 'l': 0, 'gf': 0, 'ga': 0, 'gd': 0, 'pts': 0, 
       'form': []
     },
@@ -20,7 +20,7 @@ class MockData {
       'pos': 3, 
       'name': 'Liverpool', 
       'manager': 'vicky',
-      'logo': 'https://upload.wikimedia.org/wikipedia/en/thumb/0/0c/Liverpool_FC.svg/1200px-Liverpool_FC.svg.png', 
+      'logo': 'assets/logos/liverpool.png', 
       'pl': 0, 'w': 0, 'd': 0, 'l': 0, 'gf': 0, 'ga': 0, 'gd': 0, 'pts': 0, 
       'form': []
     },
@@ -28,7 +28,7 @@ class MockData {
       'pos': 4, 
       'name': 'Manchester United', 
       'manager': 'Corey',
-      'logo': 'https://upload.wikimedia.org/wikipedia/en/thumb/7/7a/Manchester_United_FC_crest.svg/1200px-Manchester_United_FC_crest.svg.png', 
+      'logo': 'assets/logos/manunited.png', 
       'pl': 0, 'w': 0, 'd': 0, 'l': 0, 'gf': 0, 'ga': 0, 'gd': 0, 'pts': 0, 
       'form': []
     },
@@ -36,15 +36,15 @@ class MockData {
       'pos': 5, 
       'name': 'Wolves', 
       'manager': 'Arnold',
-      'logo': 'https://upload.wikimedia.org/wikipedia/en/thumb/f/fc/Wolverhampton_Wanderers.svg/1200px-Wolverhampton_Wanderers.svg.png', 
+      'logo': 'assets/logos/wolves.png', 
       'pl': 0, 'w': 0, 'd': 0, 'l': 0, 'gf': 0, 'ga': 0, 'gd': 0, 'pts': 0, 
       'form': []
     },
     {
       'pos': 6, 
-      'name': 'Zima iyo ngwai', 
-      'manager': 'Jones',
-      'logo': 'https://upload.wikimedia.org/wikipedia/en/thumb/c/cc/Chelsea_FC.svg/1200px-Chelsea_FC.svg.png', 
+      'name': 'Chelsea', 
+      'manager': 'Enzo Maresca',
+      'logo': 'assets/logos/chelsea.png', 
       'pl': 0, 'w': 0, 'd': 0, 'l': 0, 'gf': 0, 'ga': 0, 'gd': 0, 'pts': 0, 
       'form': []
     },
@@ -52,15 +52,15 @@ class MockData {
       'pos': 7, 
       'name': 'Everton', 
       'manager': 'issa',
-      'logo': 'https://upload.wikimedia.org/wikipedia/en/thumb/7/7c/Everton_FC_logo.svg/1200px-Everton_FC_logo.svg.png', 
+      'logo': 'assets/logos/everton.png', 
       'pl': 0, 'w': 0, 'd': 0, 'l': 0, 'gf': 0, 'ga': 0, 'gd': 0, 'pts': 0, 
       'form': []
     },
     {
       'pos': 8, 
-      'name': 'Cardiff City', 
+      'name': 'Arsenal', 
       'manager': 'Max',
-      'logo': 'https://upload.wikimedia.org/wikipedia/en/thumb/3/3c/Cardiff_City_crest.svg/1200px-Cardiff_City_crest.svg.png', 
+      'logo': 'assets/logos/arsenal.png', 
       'pl': 0, 'w': 0, 'd': 0, 'l': 0, 'gf': 0, 'ga': 0, 'gd': 0, 'pts': 0, 
       'form': []
     },
