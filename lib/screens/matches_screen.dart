@@ -92,7 +92,7 @@ class _MatchesMainScreenState extends State<MatchesMainScreen> with SingleTicker
         headerSliverBuilder: (context, bool innerBoxIsScrolled) {
           return [
             SliverAppBar(
-              expandedHeight: isTablet ? 320.0 : 220.0,
+              expandedHeight: isTablet ? Responsive.h(context, 40) : Responsive.h(context, 30),
               floating: false,
               pinned: true,
               backgroundColor: AppTheme.primaryPurple,
@@ -155,13 +155,13 @@ class _MatchesMainScreenState extends State<MatchesMainScreen> with SingleTicker
                                            underline: const SizedBox(),
                                            alignment: Alignment.center,
                                            isExpanded: true, // Added
-                                           style: GoogleFonts.outfit(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1),
-                                           items: tournaments.map<DropdownMenuItem<String>>((Tournament t) {
-                                             return DropdownMenuItem<String>(
-                                               value: t.id,
-                                               child: Center(child: Text(t.name.toUpperCase())),
-                                             );
-                                           }).toList(),
+                                            style: GoogleFonts.outfit(color: Colors.white, fontSize: Responsive.sp(context, 18), fontWeight: FontWeight.w900, letterSpacing: 1),
+                                            items: tournaments.map<DropdownMenuItem<String>>((Tournament t) {
+                                              return DropdownMenuItem<String>(
+                                                value: t.id,
+                                                child: Center(child: Text(t.name.toUpperCase(), style: TextStyle(fontSize: Responsive.sp(context, 14)))),
+                                              );
+                                            }).toList(),
                                            onChanged: (String? newValue) {
                                              if (newValue != null) {
                                                setState(() => _selectedTournamentId = newValue);
@@ -214,8 +214,8 @@ class _MatchesMainScreenState extends State<MatchesMainScreen> with SingleTicker
                     indicatorWeight: 4,
                     labelColor: AppTheme.primaryPurple,
                     unselectedLabelColor: Colors.grey.shade400,
-                    labelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1),
-                    unselectedLabelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 16),
+                    labelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: Responsive.sp(context, 14), letterSpacing: 1),
+                    unselectedLabelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: Responsive.sp(context, 14)),
                     tabs: const [
                       Tab(text: "RESULTS"),
                       Tab(text: "MATCHES"),

@@ -22,8 +22,8 @@ class _StandingsTableViewState extends State<StandingsTableView> {
 
   Widget _buildTypeToggle() {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 20),
-      height: 48,
+      margin: EdgeInsets.symmetric(vertical: Responsive.sp(context, 20)),
+      height: Responsive.sp(context, 48),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: AppTheme.primaryPurple.withValues(alpha: 0.05),
@@ -49,7 +49,7 @@ class _StandingsTableViewState extends State<StandingsTableView> {
                     style: TextStyle(
                       color: isSelected ? AppTheme.primaryPurple : Colors.grey.shade600,
                       fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
-                      fontSize: 14,
+                      fontSize: Responsive.sp(context, 14),
                     ),
                   ),
                 ),
@@ -69,11 +69,11 @@ class _StandingsTableViewState extends State<StandingsTableView> {
     
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 2),
-      width: 20,
-      height: 20,
+      width: Responsive.sp(context, 20),
+      height: Responsive.sp(context, 20),
       decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
       child: Center(
-        child: Text(result, style: TextStyle(color: result == 'D' ? Colors.black : Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+        child: Text(result, style: TextStyle(color: result == 'D' ? Colors.black : Colors.white, fontSize: Responsive.sp(context, 10), fontWeight: FontWeight.bold)),
       ),
     );
   }
@@ -142,7 +142,7 @@ class _StandingsTableViewState extends State<StandingsTableView> {
                     Text(
                       selectedTournament.name.toUpperCase(),
                       style: GoogleFonts.outfit(
-                        fontSize: isTablet ? 24 : 18, 
+                        fontSize: Responsive.sp(context, 18), 
                         fontWeight: FontWeight.w900, 
                         color: AppTheme.primaryPurple,
                         letterSpacing: 2,
@@ -170,10 +170,10 @@ class _StandingsTableViewState extends State<StandingsTableView> {
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: DataTable(
-                columnSpacing: 18,
+                columnSpacing: Responsive.sp(context, 18),
                 horizontalMargin: 16,
-                headingTextStyle: TextStyle(color: Colors.grey.shade700, fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 0.5),
-                dataTextStyle: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textColorLight, fontSize: 14),
+                headingTextStyle: TextStyle(color: Colors.grey.shade700, fontSize: Responsive.sp(context, 12), fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                dataTextStyle: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textColorLight, fontSize: Responsive.sp(context, 13)),
                 showCheckboxColumn: false,
                 headingRowColor: WidgetStateProperty.resolveWith<Color>((Set<WidgetState> states) => Colors.grey.shade50),
                 headingRowHeight: 48,
@@ -242,13 +242,13 @@ class _StandingsTableViewState extends State<StandingsTableView> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(team.name, style: GoogleFonts.outfit(fontWeight: FontWeight.w900, color: AppTheme.primaryPurple, fontSize: 16)),
-                                Text(
-                                  team.managerName.toUpperCase(), 
-                                  style: GoogleFonts.inter(fontSize: 10, color: Colors.grey.shade500, fontWeight: FontWeight.w900, letterSpacing: 1),
-                                ),
-                              ],
+                                children: [
+                                 Text(team.name, style: GoogleFonts.outfit(fontWeight: FontWeight.w900, color: AppTheme.primaryPurple, fontSize: Responsive.sp(context, 15))),
+                                 Text(
+                                   team.managerName.toUpperCase(), 
+                                   style: GoogleFonts.inter(fontSize: Responsive.sp(context, 9), color: Colors.grey.shade500, fontWeight: FontWeight.w900, letterSpacing: 1),
+                                 ),
+                               ],
                             ),
                           ],
                         ),

@@ -106,3 +106,31 @@ class AppTheme {
     );
   }
 }
+
+class Responsive {
+  static double screenWidth(BuildContext context) => MediaQuery.of(context).size.width;
+  static double screenHeight(BuildContext context) => MediaQuery.of(context).size.height;
+
+  // Scale factor based on a standard phone width (375px)
+  static double scaleFactor(BuildContext context) {
+    double width = screenWidth(context);
+    if (width > 600) return 1.2; // Tablet/Large phone
+    if (width < 320) return 0.85; // Small phone
+    return width / 375;
+  }
+
+  static double sp(BuildContext context, double size) {
+    return size * scaleFactor(context);
+  }
+
+  static double h(BuildContext context, double percentage) {
+    return screenHeight(context) * (percentage / 100);
+  }
+
+  static double w(BuildContext context, double percentage) {
+    return screenWidth(context) * (percentage / 100);
+  }
+  
+  static bool isTablet(BuildContext context) => screenWidth(context) > 600;
+  static bool isSmallPhone(BuildContext context) => screenWidth(context) < 360;
+}

@@ -594,4 +594,32 @@ class FirebaseService {
     }
     debugPrint("DATABASE WIPE: All league data cleared.");
   }
+
+  Future<void> deleteUserAccount(String uid) async {
+    final batch = _db.batch();
+
+    // 1. Get user profile to check for teamId
+    final userDoc = await _db.collection('users').doc(uid).get();
+    
+    if (userDoc.exists) {
+      final teamId = userDoc.data()?['teamId'];
+
+      // 2. If user had a team, release it
+      if (teamId != null) {
+        final teamRef = _db.collection('teams').doc(teamId);
+        final teamSnap = await teamRef.get();
+        if (teamSnap.exists) {
+          batch.update(teamRef, {
+            'playerId': null,
+            'playerEmail': null,
+          });
+        }
+      }
+
+      // 3. Delete user profile
+      batch.delete(_db.collection('users').doc(uid));
+    }
+
+    await batch.commit();
+  }
 }

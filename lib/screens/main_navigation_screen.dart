@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
+import '../data/firebase_service.dart';
 import '../data/notification_service.dart';
 import 'submission_screen.dart';
 import 'matches_screen.dart';
@@ -22,13 +25,24 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   void initState() {
     super.initState();
-    _saveToken();
+    _checkTeamAndPermissions();
   }
 
-  void _saveToken() async {
+  void _checkTeamAndPermissions() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       await NotificationService.saveTokenToFirestore(user.uid);
+      
+      if (mounted) {
+        final firebaseService = context.read<FirebaseService>();
+        final profile = await firebaseService.getUserProfile(user.uid);
+        
+        if (mounted) {
+          if (profile == null || (!profile.isAdmin && profile.teamId == null)) {
+            context.go('/pick-team');
+          }
+        }
+      }
     }
   }
 

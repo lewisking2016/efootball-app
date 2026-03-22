@@ -55,32 +55,53 @@ void callbackDispatcher() {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  
-  // Initialize Push Notifications
-  await NotificationService.initialize();
-
-  // Initialize Workmanager for Free Background Tasks (Android only for now)
-  if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.android)) {
-    await Workmanager().initialize(callbackDispatcher);
-    await Workmanager().registerPeriodicTask(
-      "match-day-check",
-      "checkTodayMatches",
-      frequency: const Duration(hours: 3), // Remind the user every 3 hours
-      constraints: Constraints(networkType: NetworkType.connected),
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
     );
+  } catch (e) {
+    debugPrint("Firebase init error: $e");
   }
   
   // Explicitly enforce LOCAL persistence for web auto-login
-  await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+  try {
+    await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+  } catch (e) {
+    debugPrint("Persistence init error: $e");
+  }
 
-
-  // Seed db initially if it's empty
-  // await FirebaseService().seedInitialDatabase();
-
+  // Run the app first so the UI isn't blocked by permission dialogs or background setup
   runApp(const EFootballApp());
+
+  // Initialize Push Notifications asynchronously
+  setupNotifications();
+
+  // Initialize Workmanager for Free Background Tasks (Android only for now)
+  setupWorkmanager();
+}
+
+Future<void> setupNotifications() async {
+  try {
+    await NotificationService.initialize();
+  } catch (e) {
+    debugPrint("Notification init error: $e");
+  }
+}
+
+Future<void> setupWorkmanager() async {
+  try {
+    if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.android)) {
+      await Workmanager().initialize(callbackDispatcher);
+      await Workmanager().registerPeriodicTask(
+        "match-day-check",
+        "checkTodayMatches",
+        frequency: const Duration(hours: 3), // Remind the user every 3 hours
+        constraints: Constraints(networkType: NetworkType.connected),
+      );
+    }
+  } catch (e) {
+    debugPrint("Workmanager init error: $e");
+  }
 }
 
 final GoRouter _router = GoRouter(

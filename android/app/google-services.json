@@ -12,7 +12,20 @@
           "package_name": "com.efootball.efootball_app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "458723311102-cf3gjm6bvrdors708hj6920p82q8bjnn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.efootball.efootball_app",
+            "certificate_hash": "47f68784914888e062513e8c16ea83ed2d0ab7bc"
+          }
+        },
+        {
+          "client_id": "458723311102-ban17mdcr813o025qdm5gpf3bt721pbd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBbjVaUnBwCFEwnhGLXvywdvypPX47lckY"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "458723311102-ban17mdcr813o025qdm5gpf3bt721pbd.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "458723311102-0rfh2956bialvjmene8cu2v8k5egup7r.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.efootball.efootballApp"
+              }
+            }
+          ]
         }
       }
     }

@@ -32,6 +32,10 @@ class _PickTeamScreenState extends State<PickTeamScreen> {
       await NotificationService.saveTokenToFirestore(user.uid);
       
       if (mounted) {
+        // Clear routes and go to home
+        while (context.canPop()) {
+          context.pop();
+        }
         context.go('/home');
       }
     } catch (e) {
@@ -46,22 +50,22 @@ class _PickTeamScreenState extends State<PickTeamScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final teams = context.watch<List<Team>>();
-    final availableTeams = teams.where((t) => t.playerId == null).toList();
+    final allTeams = context.watch<List<Team>>();
 
     return Scaffold(
       backgroundColor: AppTheme.lightBackground,
       appBar: AppBar(
-        title: Text('CLAIM YOUR TEAM', style: GoogleFonts.outfit(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+        title: Text('CLAIM YOUR TEAM', style: GoogleFonts.outfit(fontSize: Responsive.sp(context, 18), fontWeight: FontWeight.w900, letterSpacing: 1.5)),
         backgroundColor: AppTheme.primaryPurple,
         foregroundColor: Colors.white,
         centerTitle: true,
+        automaticallyImplyLeading: false, // Force them to stay if required
       ),
       body: Stack(
         children: [
           const LineDecoration(opacity: 0.05),
           
-          if (availableTeams.isEmpty)
+          if (allTeams.isEmpty)
             Center(
               child: Padding(
                 padding: const EdgeInsets.all(32.0),
@@ -94,9 +98,9 @@ class _PickTeamScreenState extends State<PickTeamScreen> {
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
               ),
-              itemCount: availableTeams.length,
+              itemCount: allTeams.length,
               itemBuilder: (context, index) {
-                final team = availableTeams[index];
+                final team = allTeams[index];
                 return _buildTeamCard(team);
               },
             ),
@@ -114,62 +118,93 @@ class _PickTeamScreenState extends State<PickTeamScreen> {
   }
 
   Widget _buildTeamCard(Team team) {
+    bool isClaimed = team.playerId != null;
+    
     return Card(
-      elevation: 4,
+      elevation: isClaimed ? 0 : 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => _showClaimDialog(team),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Colors.white, Colors.grey.shade50],
+        onTap: isClaimed ? null : () => _showClaimDialog(team),
+        child: Opacity(
+          opacity: isClaimed ? 0.6 : 1.0,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  isClaimed ? Colors.grey.shade200 : Colors.white,
+                  isClaimed ? Colors.grey.shade300 : Colors.grey.shade50
+                ],
+              ),
             ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
+            child: Stack(
+              children: [
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: Responsive.sp(context, 70),
+                        height: Responsive.sp(context, 70),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
+                        ),
+                        padding: const EdgeInsets.all(10),
+                        child: TeamLogo(
+                          logoData: team.logoUrl,
+                          size: Responsive.sp(context, 50),
+                        ),
+                      ),
+                      SizedBox(height: Responsive.sp(context, 12)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Text(
+                          team.name,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.bold, 
+                            fontSize: Responsive.sp(context, 16), 
+                            color: AppTheme.primaryPurple
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        team.managerName,
+                        style: GoogleFonts.inter(fontSize: Responsive.sp(context, 10), color: Colors.grey.shade700, fontWeight: FontWeight.normal),
+                      ),
+                      if (isClaimed) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                          ),
+                          child: Text(
+                            "ALREADY SELECTED",
+                            style: GoogleFonts.outfit(fontSize: 8, color: Colors.red.shade800, fontWeight: FontWeight.w900),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-                padding: const EdgeInsets.all(12),
-                child: TeamLogo(
-                  logoData: team.logoUrl,
-                  size: 60,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  team.name,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.primaryPurple),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: Text(
-                  "Assigned to: ${team.managerName}",
-                  style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
+                if (isClaimed)
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Icon(Icons.lock, size: 16, color: Colors.grey.shade600),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -180,23 +215,44 @@ class _PickTeamScreenState extends State<PickTeamScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text("Claim ${team.name}?"),
-        content: Text("Are you sure you want to claim ${team.name}? You will only be able to submit scores for this team."),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text("Confirm if this is your team", style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: AppTheme.primaryPurple)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              padding: const EdgeInsets.all(8),
+              child: TeamLogo(logoData: team.logoUrl),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              "Team: ${team.name}\nManager: ${team.managerName}",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 16),
+            const Text("Once confirmed, your account will be linked to this team automatically."),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text("Cancel"),
+            child: Text("CANCEL", style: GoogleFonts.outfit(color: Colors.grey, fontWeight: FontWeight.bold)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryPurple,
-              foregroundColor: Colors.white,
+              backgroundColor: AppTheme.accentGreen,
+              foregroundColor: AppTheme.primaryPurple,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: () {
               Navigator.of(ctx).pop();
               _claimTeam(team);
             },
-            child: const Text("Confirm"),
+            child: Text("CONTINUE", style: GoogleFonts.outfit(fontWeight: FontWeight.w900)),
           ),
         ],
       ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../theme/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -60,30 +61,20 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1B0024), // Very deep purple/black
+      backgroundColor: const Color(0xFF3D195B), // Authentic EPL Purple
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Background Gradient Vibe
+          // Subtle EPL secondary glow
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: RadialGradient(
                 center: Alignment.center,
-                radius: 1.5,
+                radius: 1.2,
                 colors: [
-                  Color(0xFF4B006E), // Inner glow purple
-                  Color(0xFF1A0027), // Outer dark edge
+                  const Color(0xFF5D2A8E).withValues(alpha: 0.3), // Lighter purple glow
+                  const Color(0xFF3D195B),
                 ],
-              ),
-            ),
-          ),
-
-          // Animated particle-like faint grid overlay
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0.05,
-              child: CustomPaint(
-                painter: _GridPainter(),
               ),
             ),
           ),
@@ -103,40 +94,32 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                       child: Hero(
                         tag: 'efl_logo',
                         child: Container(
-                          width: 180,
-                          height: 180,
+                          width: Responsive.sp(context, 160),
+                          height: Responsive.sp(context, 160),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF00FF85).withValues(alpha: 0.2), // Subtle green EPL accent glow
-                                blurRadius: 60,
-                                spreadRadius: 10,
+                                color: const Color(0xFF00FF85).withValues(alpha: 0.3), // EPL Green accent
+                                blurRadius: Responsive.sp(context, 50),
+                                spreadRadius: 5,
                               ),
-                              BoxShadow(
-                                color: const Color(0xFF00D2FF).withValues(alpha: 0.15), // Subtle cyan glow
-                                blurRadius: 40,
-                                spreadRadius: -5,
-                              )
                             ],
                           ),
                           clipBehavior: Clip.antiAlias,
                           child: Image.asset(
                             'assets/efootballlogo/efllogo.jpeg',
                             fit: BoxFit.cover,
-                            filterQuality: FilterQuality.high,
-                            // Optionally apply a blend mode if the jpeg itself has white corners we want to hide
-                            // colorFilter: const ColorFilter.mode(Colors.black, BlendMode.dstIn),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 50),
+                    SizedBox(height: Responsive.sp(context, 40)),
                     // Classy text treatment
                     Text(
                       "THE NEW HOME OF",
                       style: GoogleFonts.outfit(
-                        fontSize: 14,
+                        fontSize: Responsive.sp(context, 12),
                         fontWeight: FontWeight.w600,
                         letterSpacing: 6,
                         color: Colors.white.withValues(alpha: 0.6),
@@ -145,28 +128,27 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                     const SizedBox(height: 8),
                     ShaderMask(
                       shaderCallback: (bounds) => const LinearGradient(
-                        colors: [Color(0xFF00FF85), Color(0xFF00D2FF)],
+                        colors: [Color(0xFF38003C), Color(0xFFE90052)], // EPL Purple to Pink gradient
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ).createShader(bounds),
                       child: Text(
                         "EFOOTBALL MANAGER",
                         style: GoogleFonts.outfit(
-                          fontSize: 28,
+                          fontSize: Responsive.sp(context, 26),
                           fontWeight: FontWeight.w900,
                           letterSpacing: 2,
-                          color: Colors.white, // Required for ShaderMask to take full effect over the text
+                          color: Colors.white,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 48),
-                    // subtle loading indicator
-                    SizedBox(
-                      width: 40,
-                      height: 40,
+                    SizedBox(height: Responsive.sp(context, 40)),
+                     SizedBox(
+                      width: Responsive.sp(context, 30),
+                      height: Responsive.sp(context, 30),
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withValues(alpha: 0.2)),
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withValues(alpha: 0.4)),
                       ),
                     ),
                   ],
@@ -180,22 +162,3 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   }
 }
 
-class _GridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 1.0;
-
-    const step = 40.0;
-    for (double i = 0; i < size.width; i += step) {
-      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
-    }
-    for (double i = 0; i < size.height; i += step) {
-      canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}

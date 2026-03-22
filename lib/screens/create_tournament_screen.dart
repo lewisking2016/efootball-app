@@ -21,10 +21,25 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
   final _regionController = TextEditingController(text: 'Global');
   TournamentType _selectedType = TournamentType.epl;
   
-  final List<TeamDraft> _teams = [
-    TeamDraft(name: '', manager: '', logoAsset: 'arsenal.png'),
-    TeamDraft(name: '', manager: '', logoAsset: 'mancity.png'),
-  ];
+  final List<TeamDraft> _teams = [];
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize with 2 teams
+    _teams.add(TeamDraft(name: '', manager: '', logoAsset: 'arsenal.png'));
+    _teams.add(TeamDraft(name: '', manager: '', logoAsset: 'mancity.png'));
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _regionController.dispose();
+    for (var team in _teams) {
+      team.dispose();
+    }
+    super.dispose();
+  }
 
   final List<String> _availableLogos = [
     'arsenal.png', 'astonvilla.png', 'bournemouth.png', 'brentford.png',
@@ -70,11 +85,13 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
     // Create team objects
     final teams = _teams.map((t) => Team(
       id: '', // Will be generated
-      name: t.name,
-      shortName: t.name.length >= 3 ? t.name.substring(0, 3).toUpperCase() : t.name.toUpperCase(),
+      name: t.nameController.text.trim(),
+      shortName: t.nameController.text.trim().length >= 3 
+          ? t.nameController.text.trim().substring(0, 3).toUpperCase() 
+          : t.nameController.text.trim().toUpperCase(),
       logoUrl: 'assets/logos/${t.logoAsset}',
       managerId: 'user',
-      managerName: t.manager,
+      managerName: t.managerController.text.trim(),
     )).toList();
 
     try {
@@ -125,48 +142,52 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
       ),
       body: Form(
         key: _formKey,
-        child: ListView(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
-          children: [
-            _buildSectionTitle("Tournament Details"),
-            const SizedBox(height: 12),
-            _buildTextField(_nameController, "Tournament Name", Icons.emoji_events),
-            const SizedBox(height: 12),
-            _buildTextField(_regionController, "Region/League Name", Icons.public),
-            const SizedBox(height: 16),
-            
-            const Text("Tournament Logic", style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryPurple)),
-            const SizedBox(height: 8),
-            _buildLogicDropdown(),
-            
-            const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildSectionTitle("Teams & Players"),
-                TextButton.icon(
-                  onPressed: _addTeam,
-                  icon: const Icon(Icons.add, color: AppTheme.primaryPurple),
-                  label: const Text("Add Team", style: TextStyle(color: AppTheme.primaryPurple, fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            ..._teams.asMap().entries.map((entry) => _buildTeamCard(entry.key, entry.value)),
-            
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: _saveTournament,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryPurple,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildSectionTitle("Tournament Details"),
+              const SizedBox(height: 12),
+              _buildTextField(_nameController, "Tournament Name", Icons.emoji_events),
+              const SizedBox(height: 12),
+              _buildTextField(_regionController, "Region/League Name", Icons.public),
+              const SizedBox(height: 16),
+              
+              Text("Tournament Logic", style: TextStyle(fontSize: Responsive.sp(context, 14), fontWeight: FontWeight.bold, color: AppTheme.primaryPurple)),
+              const SizedBox(height: 8),
+              _buildLogicDropdown(),
+              
+              const SizedBox(height: 32),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildSectionTitle("Teams & Players"),
+                  TextButton.icon(
+                    onPressed: _addTeam,
+                    icon: const Icon(Icons.add, color: AppTheme.primaryPurple),
+                    label: const Text("Add Team", style: TextStyle(color: AppTheme.primaryPurple, fontWeight: FontWeight.bold)),
+                  ),
+                ],
               ),
-              child: const Text("CREATE TOURNAMENT", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(height: 40),
-          ],
+              const SizedBox(height: 8),
+              // Use a Column here instead of a nested ListView to ensure all fields are validated
+              ..._teams.asMap().entries.map((entry) => _buildTeamCard(entry.key, entry.value)),
+              
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: _saveTournament,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryPurple,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text("CREATE TOURNAMENT", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
       ),
     );
@@ -205,6 +226,7 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
       child: DropdownButtonHideUnderline(
         child: DropdownButtonFormField<TournamentType>(
           initialValue: _selectedType,
+          isExpanded: true, // Fixes right overflow
           decoration: const InputDecoration(border: InputBorder.none),
           items: const [
             DropdownMenuItem(value: TournamentType.epl, child: Text("Premier League Logic (Classic Table)")),
@@ -244,17 +266,15 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
                   child: Column(
                     children: [
                       TextFormField(
-                        initialValue: team.name,
+                        controller: team.nameController,
                         decoration: const InputDecoration(labelText: "Team Name (e.g. Chelsea)", isDense: true, border: InputBorder.none, labelStyle: TextStyle(fontSize: 12, color: AppTheme.primaryPurple)),
-                        onChanged: (val) => team.name = val,
-                        validator: (value) => value == null || value.isEmpty ? "Required" : null,
+                        validator: (value) => value == null || value.trim().isEmpty ? "Required" : null,
                       ),
                       const Divider(height: 1),
                       TextFormField(
-                        initialValue: team.manager,
+                        controller: team.managerController,
                         decoration: const InputDecoration(labelText: "Player Name (e.g. John Doe)", isDense: true, border: InputBorder.none, labelStyle: TextStyle(fontSize: 12, color: AppTheme.primaryPurple)),
-                        onChanged: (val) => team.manager = val,
-                        validator: (value) => value == null || value.isEmpty ? "Required" : null,
+                        validator: (value) => value == null || value.trim().isEmpty ? "Required" : null,
                       ),
                     ],
                   ),
@@ -278,44 +298,49 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
   void _pickLogo(int index) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      isScrollControlled: true, // Allows sheet to take more space
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text("Select Team Logo", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryPurple)),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 300,
-                child: GridView.builder(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 5, mainAxisSpacing: 10, crossAxisSpacing: 10),
-                  itemCount: _availableLogos.length,
-                  itemBuilder: (context, i) {
-                    final logo = _availableLogos[i];
-                    return InkWell(
-                      onTap: () {
-                        setState(() {
-                          _teams[index].logoAsset = logo;
-                        });
-                        Navigator.pop(context);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: _teams[index].logoAsset == logo ? AppTheme.primaryPurple : Colors.transparent, width: 2),
-                          borderRadius: BorderRadius.circular(8),
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7), // Capped at 70% of screen
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text("Select Team Logo", style: TextStyle(fontSize: Responsive.sp(context, 18), fontWeight: FontWeight.bold, color: AppTheme.primaryPurple)),
+                const SizedBox(height: 16),
+                Flexible(
+                  child: GridView.builder(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 5, mainAxisSpacing: 10, crossAxisSpacing: 10),
+                    itemCount: _availableLogos.length,
+                    shrinkWrap: true,
+                    itemBuilder: (context, i) {
+                      final logo = _availableLogos[i];
+                      return InkWell(
+                        onTap: () {
+                          setState(() {
+                            _teams[index].logoAsset = logo;
+                          });
+                          Navigator.pop(context);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: _teams[index].logoAsset == logo ? AppTheme.primaryPurple : Colors.transparent, width: 2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: logo.endsWith('.svg')
+                            ? SvgPicture.asset('assets/logos/$logo')
+                            : Image.asset('assets/logos/$logo'),
                         ),
-                        child: logo.endsWith('.svg')
-                          ? SvgPicture.asset('assets/logos/$logo')
-                          : Image.asset('assets/logos/$logo'),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ],
+                SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
+              ],
+            ),
           ),
         );
       },
@@ -324,9 +349,16 @@ class _CreateTournamentScreenState extends State<CreateTournamentScreen> {
 }
 
 class TeamDraft {
-  String name;
-  String manager;
+  final TextEditingController nameController;
+  final TextEditingController managerController;
   String logoAsset;
 
-  TeamDraft({required this.name, required this.manager, required this.logoAsset});
+  TeamDraft({required String name, required String manager, required this.logoAsset})
+      : nameController = TextEditingController(text: name),
+        managerController = TextEditingController(text: manager);
+
+  void dispose() {
+    nameController.dispose();
+    managerController.dispose();
+  }
 }

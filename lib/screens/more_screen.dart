@@ -101,9 +101,22 @@ class MoreScreen extends StatelessWidget {
                   ),
                 ),
                 
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
                 
-                const SizedBox(height: 40),
+                // Delete Account
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: TextButton.icon(
+                    onPressed: () => _showDeleteAccountConfirmation(context, user),
+                    icon: const Icon(Icons.delete_forever, color: Colors.red),
+                    label: const Text("DELETE ACCOUNT", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red, fontSize: 13)),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 48),
               ],
             ),
           ),
@@ -150,6 +163,71 @@ class MoreScreen extends StatelessWidget {
               }
             },
             child: const Text("WIPE EVERYTHING", style: TextStyle(color: AppTheme.redForm, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteAccountConfirmation(BuildContext context, User? user) {
+    if (user == null) return;
+    
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text("Delete Account?"),
+        content: const Text(
+          "This is permanent. It will delete your profile and release your claimed team. This cannot be undone.",
+          style: TextStyle(color: Colors.red),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text("CANCEL")),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext); // Close dialog
+              
+              // Show loading
+              showDialog(
+                context: context, 
+                barrierDismissible: false, 
+                builder: (_) => const Center(child: CircularProgressIndicator(color: AppTheme.accentGreen))
+              );
+              
+              try {
+                final firebaseService = context.read<FirebaseService>();
+                
+                // 1. Cleanup Firestore first
+                await firebaseService.deleteUserAccount(user.uid);
+                
+                // 2. Delete Firebase Auth account
+                try {
+                  await user.delete();
+                } on FirebaseAuthException catch (e) {
+                   if (e.code == 'requires-recent-login') {
+                     if (context.mounted) {
+                       Navigator.pop(context); // Close loading
+                       ScaffoldMessenger.of(context).showSnackBar(
+                         const SnackBar(content: Text("Please log out and log back in to verify your identity before deleting your account."))
+                       );
+                       return;
+                     }
+                   }
+                }
+                
+                if (context.mounted) {
+                  Navigator.pop(context); // Close loading
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Account deleted successfully.")));
+                  context.go('/');
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  Navigator.pop(context); // Close loading
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.redForm, foregroundColor: Colors.white),
+            child: const Text("DELETE PERMANENTLY"),
           ),
         ],
       ),

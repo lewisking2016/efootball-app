@@ -202,26 +202,26 @@ class _AuthScreenState extends State<AuthScreen> {
                               children: [
                                 Hero(
                                   tag: 'logo',
-                                  child: Container(
-                                    width: 120, // Slightly increased from 100 for better presence
-                                    height: 120,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: AppTheme.primaryPurple.withValues(alpha: 0.4),
-                                          blurRadius: 20,
-                                          spreadRadius: 2,
-                                          offset: const Offset(0, 5),
-                                        ),
-                                      ],
+                                    child: Container(
+                                      width: Responsive.sp(context, 120),
+                                      height: Responsive.sp(context, 120),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: AppTheme.primaryPurple.withValues(alpha: 0.4),
+                                            blurRadius: 20,
+                                            spreadRadius: 2,
+                                            offset: const Offset(0, 5),
+                                          ),
+                                        ],
+                                      ),
+                                      clipBehavior: Clip.antiAlias,
+                                      child: Image.asset(
+                                        'assets/efootballlogo/efllogo.jpeg',
+                                        fit: BoxFit.cover,
+                                      ),
                                     ),
-                                    clipBehavior: Clip.antiAlias,
-                                    child: Image.asset(
-                                      'assets/efootballlogo/efllogo.jpeg',
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
                                 ),
                                 const SizedBox(height: 32),
                                 Text(
@@ -229,7 +229,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                   textAlign: TextAlign.center,
                                   style: GoogleFonts.outfit(
                                     color: AppTheme.accentGreen, 
-                                    fontSize: 26, 
+                                    fontSize: Responsive.sp(context, 26), 
                                     fontWeight: FontWeight.w900,
                                     letterSpacing: 2,
                                   ),
@@ -240,7 +240,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                   textAlign: TextAlign.center,
                                   style: GoogleFonts.inter(
                                     color: Colors.white.withValues(alpha: 0.8), 
-                                    fontSize: 10, 
+                                    fontSize: Responsive.sp(context, 10), 
                                     fontWeight: FontWeight.bold,
                                     letterSpacing: 3,
                                   ),
@@ -257,11 +257,11 @@ class _AuthScreenState extends State<AuthScreen> {
                                         icon: const Icon(Icons.login, color: AppTheme.primaryPurple),
                                         label: Text(
                                           "SIGN IN WITH GOOGLE", 
-                                          style: GoogleFonts.outfit(fontSize: 14, color: AppTheme.primaryPurple, fontWeight: FontWeight.w900, letterSpacing: 1)
+                                          style: GoogleFonts.outfit(fontSize: Responsive.sp(context, 14), color: AppTheme.primaryPurple, fontWeight: FontWeight.w900, letterSpacing: 1)
                                         ),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(vertical: 18),
+                                          padding: EdgeInsets.symmetric(vertical: Responsive.sp(context, 18)),
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                           elevation: 5,
                                         ),
