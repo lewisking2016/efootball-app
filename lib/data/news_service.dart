@@ -11,9 +11,11 @@ class NewsService {
     try {
       // Fetching top soccer/football news from UK sources for EPL relevance
       // Using corsproxy.io because NewsAPI blocks direct localhost/browser requests on free tier
-      final encodedUrl = Uri.encodeComponent('$_baseUrl/top-headlines?country=gb&category=sports&q=football&apiKey=$_apiKey');
+      final encodedUrl = Uri.encodeComponent(
+        '$_baseUrl/top-headlines?country=gb&category=sports&q=football&apiKey=$_apiKey',
+      );
       final url = Uri.parse('https://corsproxy.io/?$encodedUrl');
-      
+
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -21,7 +23,10 @@ class NewsService {
         if (data['status'] == 'ok' && data['articles'] != null) {
           final List articles = data['articles'];
           return articles
-              .where((article) => article['title'] != null && article['urlToImage'] != null)
+              .where(
+                (article) =>
+                    article['title'] != null && article['urlToImage'] != null,
+              )
               .map((article) => NewsArticle.fromJson(article))
               .toList();
         }
@@ -36,9 +41,11 @@ class NewsService {
   Future<List<NewsArticle>> fetchEverythingFootball() async {
     try {
       // Broader search for European football
-      final encodedUrl = Uri.encodeComponent('$_baseUrl/everything?q=premier league OR champions league football&language=en&sortBy=publishedAt&apiKey=$_apiKey');
+      final encodedUrl = Uri.encodeComponent(
+        '$_baseUrl/everything?q=premier league OR champions league football&language=en&sortBy=publishedAt&apiKey=$_apiKey',
+      );
       final url = Uri.parse('https://corsproxy.io/?$encodedUrl');
-      
+
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -46,14 +53,17 @@ class NewsService {
         if (data['status'] == 'ok' && data['articles'] != null) {
           final List articles = data['articles'];
           return articles
-              .where((article) => article['title'] != null && article['urlToImage'] != null)
+              .where(
+                (article) =>
+                    article['title'] != null && article['urlToImage'] != null,
+              )
               .map((article) => NewsArticle.fromJson(article))
               .toList();
         }
       }
       return [];
     } catch (e) {
-       debugPrint("Error fetching news: $e");
+      debugPrint("Error fetching news: $e");
       return [];
     }
   }

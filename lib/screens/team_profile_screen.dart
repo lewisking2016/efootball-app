@@ -20,13 +20,22 @@ class TeamProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final allTeams = context.watch<List<Team>>();
     final standings = context.watch<List<StandingsEntry>>();
-    
+
     final Team team = allTeams.firstWhere(
-      (t) => t.id == teamId, 
-      orElse: () => Team(id: teamId, name: 'Loading...', shortName: '', logoUrl: '', managerId: '', managerName: 'Loading...')
+      (t) => t.id == teamId,
+      orElse: () => Team(
+        id: teamId,
+        name: 'Loading...',
+        shortName: '',
+        logoUrl: '',
+        managerId: '',
+        managerName: 'Loading...',
+      ),
     );
-    
-    final StandingsEntry? teamStats = standings.where((s) => s.teamId == teamId).firstOrNull;
+
+    final StandingsEntry? teamStats = standings
+        .where((s) => s.teamId == teamId)
+        .firstOrNull;
 
     // Calculate dynamic momentum spots off Form History moving forward
     List<FlSpot> spots = const [FlSpot(0, 0)];
@@ -35,16 +44,19 @@ class TeamProfileScreen extends StatelessWidget {
     if (teamStats != null && teamStats.form.isNotEmpty) {
       spots = [];
       spotColors = [];
-      
+
       int currentPoints = teamStats.points;
       for (String result in teamStats.form.reversed) {
-        if (result == 'W') { currentPoints -= 3; }
-        else if (result == 'D') { currentPoints -= 1; }
+        if (result == 'W') {
+          currentPoints -= 3;
+        } else if (result == 'D') {
+          currentPoints -= 1;
+        }
       }
-      
+
       spots.add(FlSpot(0, currentPoints.toDouble()));
       spotColors.add(Colors.transparent); // Baseline point
-      
+
       for (int i = 0; i < teamStats.form.length; i++) {
         String result = teamStats.form[i];
         if (result == 'W') {
@@ -101,9 +113,9 @@ class TeamProfileScreen extends StatelessWidget {
                         const SizedBox(height: 16),
                         Text(
                           team.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
-                            fontSize: 28,
+                            fontSize: Responsive.sp(context, 28),
                             fontWeight: FontWeight.bold,
                           ),
                           textAlign: TextAlign.center,
@@ -111,7 +123,10 @@ class TeamProfileScreen extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           "Manager ID: ${team.managerId.isEmpty ? 'System' : team.managerId}",
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14),
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontSize: 14,
+                          ),
                         ),
                       ],
                     ),
@@ -126,15 +141,33 @@ class TeamProfileScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Form Trajectory", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryPurple)),
+                  const Text(
+                    "Form Trajectory",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryPurple,
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   Container(
                     height: 180,
-                    padding: const EdgeInsets.only(top: 24, bottom: 12, left: 16, right: 16),
+                    padding: const EdgeInsets.only(
+                      top: 24,
+                      bottom: 12,
+                      left: 16,
+                      right: 16,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: LineChart(
                       LineChartData(
@@ -153,17 +186,23 @@ class TeamProfileScreen extends StatelessWidget {
                             barWidth: 4,
                             isStrokeCapRound: true,
                             dotData: FlDotData(
-                              show: true, 
-                              getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                                radius: 5, 
-                                color: spotColors[index], 
-                                strokeWidth: 2, 
-                                strokeColor: spotColors[index] == Colors.transparent ? Colors.transparent : Colors.white
-                              )
+                              show: true,
+                              getDotPainter: (spot, percent, barData, index) =>
+                                  FlDotCirclePainter(
+                                    radius: 5,
+                                    color: spotColors[index],
+                                    strokeWidth: 2,
+                                    strokeColor:
+                                        spotColors[index] == Colors.transparent
+                                        ? Colors.transparent
+                                        : Colors.white,
+                                  ),
                             ),
                             belowBarData: BarAreaData(
                               show: true,
-                              color: AppTheme.primaryPurple.withValues(alpha: 0.15),
+                              color: AppTheme.primaryPurple.withValues(
+                                alpha: 0.15,
+                              ),
                             ),
                           ),
                         ],
@@ -176,24 +215,40 @@ class TeamProfileScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         _buildStatCard("Matches", "${teamStats.played}"),
-                        _buildStatCard("GF / GA", "${teamStats.goalsFor} / ${teamStats.goalsAgainst}"),
+                        _buildStatCard(
+                          "GF / GA",
+                          "${teamStats.goalsFor} / ${teamStats.goalsAgainst}",
+                        ),
                         _buildStatCard("Points", "${teamStats.points}"),
                       ],
                     ),
                   ],
                   const SizedBox(height: 32),
-                  const Text("Recent Fixtures", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryPurple)),
+                  const Text(
+                    "Recent Fixtures",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryPurple,
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   StreamBuilder<List<model.Match>>(
                     stream: context.read<FirebaseService>().getMatches(),
                     builder: (context, snapshot) {
-                      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                      
-                      final teamMatches = snapshot.data!.where((m) => 
-                        (m.homeTeamId == teamId || m.awayTeamId == teamId) && 
-                        (m.status == 'FT' || m.status == 'Finished')
-                      ).toList();
-                      
+                      if (!snapshot.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      final teamMatches = snapshot.data!
+                          .where(
+                            (m) =>
+                                (m.homeTeamId == teamId ||
+                                    m.awayTeamId == teamId) &&
+                                (m.status == 'FT' || m.status == 'Finished'),
+                          )
+                          .toList();
+
                       // Sort latest first
                       teamMatches.sort((a, b) => b.date.compareTo(a.date));
 
@@ -201,12 +256,18 @@ class TeamProfileScreen extends StatelessWidget {
                         return Container(
                           height: 100,
                           alignment: Alignment.center,
-                          child: Text("No finished matches yet.", style: TextStyle(color: Colors.grey.shade500)),
+                          child: Text(
+                            "No finished matches yet.",
+                            style: TextStyle(color: Colors.grey.shade500),
+                          ),
                         );
                       }
 
                       return Column(
-                        children: teamMatches.take(5).map((m) => _buildMatchTile(m, allTeams)).toList(),
+                        children: teamMatches
+                            .take(5)
+                            .map((m) => _buildMatchTile(m, allTeams))
+                            .toList(),
                       );
                     },
                   ),
@@ -220,15 +281,38 @@ class TeamProfileScreen extends StatelessWidget {
   }
 
   Widget _buildMatchTile(model.Match match, List<Team> allTeams) {
-    final home = allTeams.firstWhere((t) => t.id == match.homeTeamId, orElse: () => Team(id: '', name: 'TBD', shortName: '', logoUrl: '', managerId: '', managerName: ''));
-    final away = allTeams.firstWhere((t) => t.id == match.awayTeamId, orElse: () => Team(id: '', name: 'TBD', shortName: '', logoUrl: '', managerId: '', managerName: ''));
+    final home = allTeams.firstWhere(
+      (t) => t.id == match.homeTeamId,
+      orElse: () => Team(
+        id: '',
+        name: 'TBD',
+        shortName: '',
+        logoUrl: '',
+        managerId: '',
+        managerName: '',
+      ),
+    );
+    final away = allTeams.firstWhere(
+      (t) => t.id == match.awayTeamId,
+      orElse: () => Team(
+        id: '',
+        name: 'TBD',
+        shortName: '',
+        logoUrl: '',
+        managerId: '',
+        managerName: '',
+      ),
+    );
     final isHome = match.homeTeamId == teamId;
     final teamScore = isHome ? match.homeScore : match.awayScore;
     final oppScore = isHome ? match.awayScore : match.homeScore;
-    
+
     Color resultColor = Colors.grey;
-    if (teamScore! > oppScore!) { resultColor = AppTheme.accentGreen; }
-    else if (teamScore < oppScore) { resultColor = AppTheme.redForm; }
+    if (teamScore! > oppScore!) {
+      resultColor = AppTheme.accentGreen;
+    } else if (teamScore < oppScore) {
+      resultColor = AppTheme.redForm;
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -236,18 +320,31 @@ class TeamProfileScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
             width: 32,
             height: 32,
-            decoration: BoxDecoration(color: resultColor.withValues(alpha: 0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: resultColor.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
             child: Center(
               child: Text(
                 teamScore > oppScore ? "W" : (teamScore < oppScore ? "L" : "D"),
-                style: TextStyle(color: resultColor, fontWeight: FontWeight.bold, fontSize: 12),
+                style: TextStyle(
+                  color: resultColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
               ),
             ),
           ),
@@ -258,7 +355,10 @@ class TeamProfileScreen extends StatelessWidget {
               children: [
                 Text(
                   isHome ? "vs ${away.name}" : "at ${home.name}",
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
                 ),
                 Text(
                   DateFormat('MMM d, yyyy').format(match.date),
@@ -269,7 +369,11 @@ class TeamProfileScreen extends StatelessWidget {
           ),
           Text(
             "${match.homeScore} - ${match.awayScore}",
-            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.primaryPurple),
+            style: const TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 16,
+              color: AppTheme.primaryPurple,
+            ),
           ),
         ],
       ),
@@ -286,9 +390,23 @@ class TeamProfileScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(title, style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontWeight: FontWeight.bold)),
+          Text(
+            title,
+            style: TextStyle(
+              color: Colors.grey.shade600,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 8),
-          Text(value, style: const TextStyle(color: AppTheme.primaryPurple, fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppTheme.primaryPurple,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );

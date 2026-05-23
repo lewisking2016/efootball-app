@@ -3,11 +3,13 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth_screen.dart';
 import 'screens/main_navigation_screen.dart';
+import 'screens/matches_screen.dart';
 import 'screens/team_profile_screen.dart';
 import 'data/firebase_service.dart';
 import 'data/notification_service.dart';
@@ -27,21 +29,25 @@ void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     try {
       if (Firebase.apps.isEmpty) {
-        await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
       }
-      
+
       // 1. Handle Automations (Postponements / Auto-Results)
       await FirebaseService().handleDelayedMatches();
-      
+
       // 2. Handle Reminders
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        final matches = await FirebaseService().getTeamMatchesTodaySync(user.uid);
+        final matches = await FirebaseService().getTeamMatchesTodaySync(
+          user.uid,
+        );
         if (matches.isNotEmpty) {
           await NotificationService.initialize();
           await NotificationService.showLocalNotification(
             "⚽ Match Day Today!",
-            "Your team plays today! Don't forget to submit the result."
+            "Your team plays today! Don't forget to submit the result.",
           );
         }
       }
@@ -54,15 +60,19 @@ void callbackDispatcher() {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
+      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+    );
   } catch (e) {
     debugPrint("Firebase init error: $e");
   }
-  
+
   // Explicitly enforce LOCAL persistence for web auto-login
   try {
     await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
@@ -112,7 +122,8 @@ final GoRouter _router = GoRouter(
       pageBuilder: (context, state) => CustomTransitionPage(
         key: state.pageKey,
         child: const SplashScreen(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) => FadeTransition(opacity: animation, child: child),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+            FadeTransition(opacity: animation, child: child),
       ),
     ),
     GoRoute(
@@ -124,7 +135,10 @@ final GoRouter _router = GoRouter(
           return FadeTransition(
             opacity: animation,
             child: SlideTransition(
-              position: Tween<Offset>(begin: const Offset(0.0, 0.1), end: Offset.zero).animate(animation),
+              position: Tween<Offset>(
+                begin: const Offset(0.0, 0.1),
+                end: Offset.zero,
+              ).animate(animation),
               child: child,
             ),
           );
@@ -137,10 +151,7 @@ final GoRouter _router = GoRouter(
         key: state.pageKey,
         child: const MainNavigationScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(
-            opacity: animation,
-            child: child,
-          );
+          return FadeTransition(opacity: animation, child: child);
         },
       ),
     ),
@@ -157,7 +168,16 @@ final GoRouter _router = GoRouter(
     ),
     GoRoute(
       path: '/join-tournament',
-      builder: (context, state) => const JoinTournamentScreen(),
+      builder: (context, state) => JoinTournamentScreen(
+        initialTournamentId: state.uri.queryParameters['tournamentId'],
+      ),
+    ),
+    GoRoute(
+      path: '/league/:id',
+      builder: (context, state) {
+        final tournamentId = state.pathParameters['id']!;
+        return MatchesMainScreen(tournamentId: tournamentId);
+      },
     ),
     GoRoute(
       path: '/pick-team',

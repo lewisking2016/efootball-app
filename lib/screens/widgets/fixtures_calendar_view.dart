@@ -23,7 +23,10 @@ class _FixturesCalendarViewState extends State<FixturesCalendarView> {
 
   @override
   Widget build(BuildContext context) {
-    final matches = context.watch<List<model.Match>>().where((m) => m.tournamentId == widget.tournamentId).toList();
+    final matches = context
+        .watch<List<model.Match>>()
+        .where((m) => m.tournamentId == widget.tournamentId)
+        .toList();
     final teams = context.watch<List<Team>>();
 
     // Map matches to dates
@@ -56,9 +59,18 @@ class _FixturesCalendarViewState extends State<FixturesCalendarView> {
             setState(() => _calendarFormat = format);
           },
           calendarStyle: CalendarStyle(
-            markerDecoration: BoxDecoration(color: AppTheme.accentGreen, shape: BoxShape.circle),
-            todayDecoration: BoxDecoration(color: AppTheme.primaryPurple.withValues(alpha: 0.3), shape: BoxShape.circle),
-            selectedDecoration: BoxDecoration(color: AppTheme.primaryPurple, shape: BoxShape.circle),
+            markerDecoration: BoxDecoration(
+              color: AppTheme.accentGreen,
+              shape: BoxShape.circle,
+            ),
+            todayDecoration: BoxDecoration(
+              color: AppTheme.primaryPurple.withValues(alpha: 0.3),
+              shape: BoxShape.circle,
+            ),
+            selectedDecoration: BoxDecoration(
+              color: AppTheme.primaryPurple,
+              shape: BoxShape.circle,
+            ),
           ),
           headerStyle: HeaderStyle(
             formatButtonVisible: true,
@@ -71,15 +83,55 @@ class _FixturesCalendarViewState extends State<FixturesCalendarView> {
         ),
         const SizedBox(height: 16),
         Expanded(
-          child: _selectedDay == null || eventSource[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)] == null
-              ? const Center(child: Text("Select a date with matches to view details"))
+          child:
+              _selectedDay == null ||
+                  eventSource[DateTime(
+                        _selectedDay!.year,
+                        _selectedDay!.month,
+                        _selectedDay!.day,
+                      )] ==
+                      null
+              ? const Center(
+                  child: Text("Select a date with matches to view details"),
+                )
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  itemCount: eventSource[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)]!.length,
+                  itemCount:
+                      eventSource[DateTime(
+                            _selectedDay!.year,
+                            _selectedDay!.month,
+                            _selectedDay!.day,
+                          )]!
+                          .length,
                   itemBuilder: (context, index) {
-                    final match = eventSource[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)]![index];
-                    final homeTeam = teams.firstWhere((t) => t.id == match.homeTeamId, orElse: () => Team(id: '', name: 'Unknown', shortName: 'UNK', logoUrl: '', managerId: '', managerName: ''));
-                    final awayTeam = teams.firstWhere((t) => t.id == match.awayTeamId, orElse: () => Team(id: '', name: 'Unknown', shortName: 'UNK', logoUrl: '', managerId: '', managerName: ''));
+                    final match =
+                        eventSource[DateTime(
+                          _selectedDay!.year,
+                          _selectedDay!.month,
+                          _selectedDay!.day,
+                        )]![index];
+                    final homeTeam = teams.firstWhere(
+                      (t) => t.id == match.homeTeamId,
+                      orElse: () => Team(
+                        id: '',
+                        name: 'Unknown',
+                        shortName: 'UNK',
+                        logoUrl: '',
+                        managerId: '',
+                        managerName: '',
+                      ),
+                    );
+                    final awayTeam = teams.firstWhere(
+                      (t) => t.id == match.awayTeamId,
+                      orElse: () => Team(
+                        id: '',
+                        name: 'Unknown',
+                        shortName: 'UNK',
+                        logoUrl: '',
+                        managerId: '',
+                        managerName: '',
+                      ),
+                    );
 
                     return _buildMatchCard(context, match, homeTeam, awayTeam);
                   },
@@ -89,13 +141,23 @@ class _FixturesCalendarViewState extends State<FixturesCalendarView> {
     );
   }
 
-  Widget _buildMatchCard(BuildContext context, model.Match match, Team home, Team away) {
+  Widget _buildMatchCard(
+    BuildContext context,
+    model.Match match,
+    Team home,
+    Team away,
+  ) {
+    final isCompact = MediaQuery.of(context).size.width < 380;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () {
-          Navigator.of(context).push(MaterialPageRoute(builder: (context) => MatchSubmissionScreen(match: match)));
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => MatchSubmissionScreen(match: match),
+            ),
+          );
         },
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -103,17 +165,39 @@ class _FixturesCalendarViewState extends State<FixturesCalendarView> {
             children: [
               _buildTeamLogo(home.logoUrl),
               const SizedBox(width: 8),
-              Expanded(child: Text(home.name, textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.bold))),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+              Expanded(
                 child: Text(
-                  match.status == 'FT' && match.homeScore != null && match.awayScore != null
-                      ? "${match.homeScore} - ${match.awayScore}"
-                      : "VS",
-                  style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+                  home.name,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
-              Expanded(child: Text(away.name, textAlign: TextAlign.left, style: const TextStyle(fontWeight: FontWeight.bold))),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: isCompact ? 8 : 16),
+                child: Text(
+                  match.status == 'FT' &&
+                          match.homeScore != null &&
+                          match.awayScore != null
+                      ? "${match.homeScore} - ${match.awayScore}"
+                      : "VS",
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontWeight: FontWeight.bold,
+                    fontSize: isCompact ? 12 : 14,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  away.name,
+                  textAlign: TextAlign.left,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
               const SizedBox(width: 8),
               _buildTeamLogo(away.logoUrl),
             ],
@@ -124,7 +208,9 @@ class _FixturesCalendarViewState extends State<FixturesCalendarView> {
   }
 
   Widget _buildTeamLogo(String url) {
-    if (url.isEmpty) return CircleAvatar(radius: 15, backgroundColor: AppTheme.cardColorLight);
+    if (url.isEmpty) {
+      return CircleAvatar(radius: 15, backgroundColor: AppTheme.cardColorLight);
+    }
     return SizedBox(
       width: 30,
       height: 30,

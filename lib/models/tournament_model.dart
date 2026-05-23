@@ -26,10 +26,10 @@ class Tournament {
       region: data['region'] ?? '',
       type: data['type'] == 'uefa' ? TournamentType.uefa : TournamentType.epl,
       active: data['active'] ?? true,
-      createdAt: data['createdAt'] != null 
-          ? (data['createdAt'] is Timestamp 
-              ? (data['createdAt'] as Timestamp).toDate() 
-              : DateTime.parse(data['createdAt'].toString()))
+      createdAt: data['createdAt'] != null
+          ? (data['createdAt'] is Timestamp
+                ? (data['createdAt'] as Timestamp).toDate()
+                : DateTime.parse(data['createdAt'].toString()))
           : DateTime.now(),
     );
   }

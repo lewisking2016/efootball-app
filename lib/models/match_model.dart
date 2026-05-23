@@ -43,7 +43,9 @@ class Match {
       awaySubmittedScore: data['awaySubmittedScore'],
       matchweek: data['matchweek'] ?? '1',
       status: data['status'] ?? 'Pending',
-      date: data['date'] != null ? DateTime.parse(data['date']) : DateTime.now(),
+      date: data['date'] != null
+          ? DateTime.parse(data['date'])
+          : DateTime.now(),
       screenshotBase64: data['screenshotBase64'] ?? '',
       aiVerified: data['aiVerified'] ?? false,
       postponedCount: data['postponedCount'] ?? 0,

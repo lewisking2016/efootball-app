@@ -20,10 +20,12 @@ class NewsArticle {
       title: json['title'] ?? 'No Title',
       description: json['description'] ?? 'No description available',
       url: json['url'] ?? '',
-      imageUrl: json['urlToImage'] ?? 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/EFootball_logo.svg/512px-EFootball_logo.svg.png',
+      imageUrl:
+          json['urlToImage'] ??
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/EFootball_logo.svg/512px-EFootball_logo.svg.png',
       sourceName: json['source']?['name'] ?? 'Unknown Source',
-      publishedAt: json['publishedAt'] != null 
-          ? DateTime.tryParse(json['publishedAt']) ?? DateTime.now() 
+      publishedAt: json['publishedAt'] != null
+          ? DateTime.tryParse(json['publishedAt']) ?? DateTime.now()
           : DateTime.now(),
     );
   }

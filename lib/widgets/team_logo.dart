@@ -6,11 +6,7 @@ class TeamLogo extends StatelessWidget {
   final String logoData;
   final double size;
 
-  const TeamLogo({
-    super.key,
-    required this.logoData,
-    this.size = 24.0,
-  });
+  const TeamLogo({super.key, required this.logoData, this.size = 24.0});
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +21,8 @@ class TeamLogo extends StatelessWidget {
         height: size,
         fit: BoxFit.contain,
         filterQuality: FilterQuality.high,
-        errorBuilder: (_, _, _) => Icon(Icons.broken_image, size: size, color: AppTheme.primaryPurple),
+        errorBuilder: (_, _, _) =>
+            Icon(Icons.broken_image, size: size, color: AppTheme.primaryPurple),
       );
     }
 
@@ -36,24 +33,32 @@ class TeamLogo extends StatelessWidget {
         height: size,
         fit: BoxFit.contain,
         filterQuality: FilterQuality.high,
-        errorBuilder: (_, _, _) => Icon(Icons.broken_image, size: size, color: AppTheme.primaryPurple),
+        errorBuilder: (_, _, _) =>
+            Icon(Icons.broken_image, size: size, color: AppTheme.primaryPurple),
       );
     }
 
     // Attempt to decode Base64 string from Firebase db
     try {
       // Remove data URI scheme if present (e.g., 'data:image/png;base64,')
-      final String base64String = logoData.contains(',') ? logoData.split(',').last : logoData;
+      final String base64String = logoData.contains(',')
+          ? logoData.split(',').last
+          : logoData;
       return Image.memory(
         base64Decode(base64String),
         width: size,
         height: size,
         fit: BoxFit.contain,
         filterQuality: FilterQuality.high,
-        errorBuilder: (_, _, _) => Icon(Icons.broken_image, size: size, color: AppTheme.primaryPurple),
+        errorBuilder: (_, _, _) =>
+            Icon(Icons.broken_image, size: size, color: AppTheme.primaryPurple),
       );
     } catch (e) {
-      return Icon(Icons.image_not_supported, size: size, color: AppTheme.primaryPurple);
+      return Icon(
+        Icons.image_not_supported,
+        size: size,
+        color: AppTheme.primaryPurple,
+      );
     }
   }
 }

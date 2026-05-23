@@ -8,7 +8,6 @@ import '../models/app_user_model.dart';
 import '../widgets/team_logo.dart';
 import '../theme/app_theme.dart';
 import '../data/firebase_service.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -24,9 +23,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget build(BuildContext context) {
     // Read live data from Firestore provider
     final allTeams = context.watch<List<Team>>();
-    
+
     // Client-side filtering
-    final filteredTeams = allTeams.where((t) => t.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+    final filteredTeams = allTeams
+        .where((t) => t.name.toLowerCase().contains(_searchQuery.toLowerCase()))
+        .toList();
 
     final firebaseService = context.read<FirebaseService>();
     final user = FirebaseAuth.instance.currentUser;
@@ -34,7 +35,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return Scaffold(
       backgroundColor: AppTheme.cardColorLight,
       appBar: AppBar(
-        title: const Text("Explore Teams", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          "Explore Teams",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: AppTheme.primaryPurple,
         foregroundColor: Colors.white,
       ),
@@ -52,7 +56,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     final matches = matchSnapshot.data ?? [];
                     if (matches.isEmpty) return const SizedBox();
 
-                    final _ = matches.first; // match used to trigger non-empty check
+                    final _ =
+                        matches.first; // match used to trigger non-empty check
 
                     return Container(
                       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -65,15 +70,28 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         ),
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
-                          BoxShadow(color: AppTheme.primaryPurple.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 6))
+                          BoxShadow(
+                            color: AppTheme.primaryPurple.withValues(
+                              alpha: 0.3,
+                            ),
+                            blurRadius: 12,
+                            offset: const Offset(0, 6),
+                          ),
                         ],
                       ),
                       child: Row(
                         children: [
                           Container(
                             padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-                            child: const Icon(Icons.notifications_active, color: Colors.white, size: 24),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.notifications_active,
+                              color: Colors.white,
+                              size: 24,
+                            ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
@@ -82,12 +100,21 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               children: [
                                 Text(
                                   "MATCH DAY TODAY!",
-                                  style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 13,
+                                    letterSpacing: 1,
+                                  ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   "Your team has a match scheduled for today. Don't forget to submit the result!",
-                                  style: GoogleFonts.inter(color: Colors.white.withValues(alpha: 0.9), fontSize: 12, fontWeight: FontWeight.w500),
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ],
                             ),
@@ -97,7 +124,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     );
                   },
                 ),
-              
+
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: TextField(
@@ -106,22 +133,31 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     prefixIcon: const Icon(Icons.search),
                     filled: true,
                     fillColor: Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                   onChanged: (val) => setState(() => _searchQuery = val),
                 ),
               ),
               Expanded(
                 child: filteredTeams.isEmpty
-                    ? const Center(child: Text("No clubs found.", style: TextStyle(color: Colors.grey)))
+                    ? const Center(
+                        child: Text(
+                          "No clubs found.",
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      )
                     : GridView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
-                          childAspectRatio: 0.8,
-                        ),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                              childAspectRatio: 0.8,
+                            ),
                         itemCount: filteredTeams.length,
                         itemBuilder: (context, index) {
                           final team = filteredTeams[index];
@@ -132,20 +168,31 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(12),
-                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.05),
+                                    blurRadius: 10,
+                                  ),
+                                ],
                               ),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Hero(
-                                    tag: 'logo_${team.id}', 
-                                    child: TeamLogo(logoData: team.logoUrl, size: 50),
+                                    tag: 'logo_${team.id}',
+                                    child: TeamLogo(
+                                      logoData: team.logoUrl,
+                                      size: 50,
+                                    ),
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
                                     team.name,
                                     textAlign: TextAlign.center,
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                   ),

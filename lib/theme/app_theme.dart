@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // Brand Colors
@@ -11,7 +10,7 @@ class AppTheme {
   static const Color cardColorLight = Color(0xFFFFFFFF);
   static const Color textColorLight = Color(0xFF1A1A1A);
   static const Color textColorDark = Color(0xFFFFFFFF);
-  
+
   // High-Fidelity Gradients
   static const LinearGradient headerGradient = LinearGradient(
     begin: Alignment.topLeft,
@@ -65,20 +64,32 @@ class AppTheme {
         onSurface: textColorLight,
         outline: Colors.grey.withValues(alpha: 0.1),
       ),
-      // PREMIUM TYPOGRAPHY: Inter for Body, Outfit for Headings
-      textTheme: GoogleFonts.interTextTheme().copyWith(
-        displayLarge: GoogleFonts.outfit(fontWeight: FontWeight.w900, color: textColorLight),
-        displayMedium: GoogleFonts.outfit(fontWeight: FontWeight.w800, color: textColorLight),
-        displaySmall: GoogleFonts.outfit(fontWeight: FontWeight.w700, color: textColorLight),
-        headlineMedium: GoogleFonts.outfit(fontWeight: FontWeight.w700, color: textColorLight),
-        titleLarge: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 20),
+      // Use the platform font so the app follows the user's device settings.
+      textTheme: ThemeData.light().textTheme.copyWith(
+        displayLarge: const TextStyle(
+          fontWeight: FontWeight.w900,
+          color: textColorLight,
+        ),
+        displayMedium: const TextStyle(
+          fontWeight: FontWeight.w800,
+          color: textColorLight,
+        ),
+        displaySmall: const TextStyle(
+          fontWeight: FontWeight.w700,
+          color: textColorLight,
+        ),
+        headlineMedium: const TextStyle(
+          fontWeight: FontWeight.w700,
+          color: textColorLight,
+        ),
+        titleLarge: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: primaryPurple),
-        titleTextStyle: GoogleFonts.outfit(
+        titleTextStyle: TextStyle(
           color: primaryPurple,
           fontSize: 20,
           fontWeight: FontWeight.w800,
@@ -108,8 +119,10 @@ class AppTheme {
 }
 
 class Responsive {
-  static double screenWidth(BuildContext context) => MediaQuery.of(context).size.width;
-  static double screenHeight(BuildContext context) => MediaQuery.of(context).size.height;
+  static double screenWidth(BuildContext context) =>
+      MediaQuery.of(context).size.width;
+  static double screenHeight(BuildContext context) =>
+      MediaQuery.of(context).size.height;
 
   // Scale factor based on a standard phone width (375px)
   static double scaleFactor(BuildContext context) {
@@ -130,7 +143,7 @@ class Responsive {
   static double w(BuildContext context, double percentage) {
     return screenWidth(context) * (percentage / 100);
   }
-  
+
   static bool isTablet(BuildContext context) => screenWidth(context) > 600;
   static bool isSmallPhone(BuildContext context) => screenWidth(context) < 360;
 }

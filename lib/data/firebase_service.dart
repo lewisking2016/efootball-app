@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../models/team_model.dart';
 import '../models/match_model.dart';
@@ -9,32 +10,95 @@ import 'mock_data.dart';
 
 class FirebaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  List<StandingsEntry> _standingsCache = const [];
+  List<Match> _matchesCache = const [];
+  List<Team> _teamsCache = const [];
+  List<Tournament> _tournamentsCache = const [];
+
+  late final Stream<List<StandingsEntry>> _standingsStream = _db
+      .collection('standings')
+      .orderBy('position')
+      .snapshots(includeMetadataChanges: true)
+      .map((snapshot) {
+        _standingsCache = snapshot.docs
+            .map((doc) => StandingsEntry.fromMap(doc.data(), doc.id))
+            .toList();
+        return _standingsCache;
+      })
+      .handleError((Object error) {
+        debugPrint('Standings stream error: $error');
+      })
+      .asBroadcastStream();
+
+  late final Stream<List<Match>> _matchesStream = _db
+      .collection('matches')
+      .orderBy('date')
+      .snapshots(includeMetadataChanges: true)
+      .map((snapshot) {
+        _matchesCache = snapshot.docs
+            .map((doc) => Match.fromMap(doc.data(), doc.id))
+            .toList();
+        return _matchesCache;
+      })
+      .handleError((Object error) {
+        debugPrint('Matches stream error: $error');
+      })
+      .asBroadcastStream();
+
+  late final Stream<List<Team>> _teamsStream = _db
+      .collection('teams')
+      .snapshots(includeMetadataChanges: true)
+      .map((snapshot) {
+        _teamsCache = snapshot.docs
+            .map((doc) => Team.fromMap(doc.data(), doc.id))
+            .toList();
+        return _teamsCache;
+      })
+      .handleError((Object error) {
+        debugPrint('Teams stream error: $error');
+      })
+      .asBroadcastStream();
+
+  late final Stream<List<Tournament>> _tournamentsStream = _db
+      .collection('tournaments')
+      .snapshots(includeMetadataChanges: true)
+      .map((snapshot) {
+        _tournamentsCache = snapshot.docs
+            .map((doc) => Tournament.fromMap(doc.data(), doc.id))
+            .toList();
+        return _tournamentsCache;
+      })
+      .handleError((Object error) {
+        debugPrint('Tournaments stream error: $error');
+      })
+      .asBroadcastStream();
 
   // -- Streams -- //
 
   Stream<List<StandingsEntry>> getStandings() {
-    return _db.collection('standings').orderBy('position').snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) => StandingsEntry.fromMap(doc.data(), doc.id)).toList();
-    });
+    return _standingsStream;
   }
 
   Stream<List<Match>> getMatches() {
-    return _db.collection('matches').orderBy('date').snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) => Match.fromMap(doc.data(), doc.id)).toList();
-    });
+    return _matchesStream;
   }
 
   Stream<List<Team>> getTeams() {
-    return _db.collection('teams').snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) => Team.fromMap(doc.data(), doc.id)).toList();
-    });
+    return _teamsStream;
   }
 
   Stream<List<Tournament>> getTournaments() {
-    return _db.collection('tournaments').snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) => Tournament.fromMap(doc.data(), doc.id)).toList();
-    });
+    return _tournamentsStream;
   }
+
+  List<StandingsEntry> get cachedStandings =>
+      List.unmodifiable(_standingsCache);
+  List<Match> get cachedMatches => List.unmodifiable(_matchesCache);
+  List<Team> get cachedTeams => List.unmodifiable(_teamsCache);
+  List<Tournament> get cachedTournaments =>
+      List.unmodifiable(_tournamentsCache);
   // For background tasks (Free alternative to Cloud Functions)
   Future<List<Match>> getTeamMatchesTodaySync(String uid) async {
     try {
@@ -44,14 +108,16 @@ class FirebaseService {
       if (teamId == null) return [];
 
       final todayStr = DateTime.now().toIso8601String().split('T')[0];
-      
+
       // Query matches where team plays and date starts with today
-      final homeQuery = await _db.collection('matches')
+      final homeQuery = await _db
+          .collection('matches')
           .where('homeTeamId', isEqualTo: teamId)
           .where('status', isEqualTo: 'Pending')
           .get();
-          
-      final awayQuery = await _db.collection('matches')
+
+      final awayQuery = await _db
+          .collection('matches')
           .where('awayTeamId', isEqualTo: teamId)
           .where('status', isEqualTo: 'Pending')
           .get();
@@ -61,24 +127,36 @@ class FirebaseService {
         ...awayQuery.docs.map((d) => Match.fromMap(d.data(), d.id)),
       ];
 
-      return all.where((m) => m.date.toIso8601String().startsWith(todayStr)).toList();
+      return all
+          .where((m) => m.date.toIso8601String().startsWith(todayStr))
+          .toList();
     } catch (e) {
       debugPrint("Sync Error: $e");
       return [];
     }
   }
+
   Stream<List<Match>> getTeamMatchesToday(String teamId) {
     final now = DateTime.now();
-    final todayStr = DateTime(now.year, now.month, now.day).toIso8601String().split('T')[0];
-    
-    return _db.collection('matches')
+    final todayStr = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).toIso8601String().split('T')[0];
+
+    return _db
+        .collection('matches')
         .where('status', isEqualTo: 'Pending')
         .snapshots()
         .map((snapshot) {
-          return snapshot.docs.map((doc) => Match.fromMap(doc.data(), doc.id)).where((m) {
-            final mDateStr = m.date.toIso8601String().split('T')[0];
-            return mDateStr == todayStr && (m.homeTeamId == teamId || m.awayTeamId == teamId);
-          }).toList();
+          return snapshot.docs
+              .map((doc) => Match.fromMap(doc.data(), doc.id))
+              .where((m) {
+                final mDateStr = m.date.toIso8601String().split('T')[0];
+                return mDateStr == todayStr &&
+                    (m.homeTeamId == teamId || m.awayTeamId == teamId);
+              })
+              .toList();
         });
   }
 
@@ -92,160 +170,207 @@ class FirebaseService {
   }
 
   // -- Updating Standings Engine -- //
-  
-  // -- Updating Standings Engine -- //
-  
-  Future<void> updateStandings(String tournamentId, String homeTeamId, String awayTeamId, int homeScore, int awayScore, {int? oldHomeScore, int? oldAwayScore}) async {
-    await _db.runTransaction((transaction) async {
-      final homeRef = _db.collection('standings').doc('${tournamentId}_$homeTeamId');
-      final awayRef = _db.collection('standings').doc('${tournamentId}_$awayTeamId');
 
-      final homeDoc = await transaction.get(homeRef);
-      final awayDoc = await transaction.get(awayRef);
+  bool _isFinalMatchStatus(String status) =>
+      status == 'FT' || status == 'Finished';
 
-      if (!homeDoc.exists || !awayDoc.exists) return;
-
-      Map<String, dynamic> calculateNewStats(Map<String, dynamic> data, int goalsFor, int goalsAgainst, {int? prevGoalsFor, int? prevGoalsAgainst}) {
-        int played = data['played'] ?? 0;
-        int won = data['won'] ?? 0;
-        int drawn = data['drawn'] ?? 0;
-        int lost = data['lost'] ?? 0;
-        int gf = data['goalsFor'] ?? 0;
-        int ga = data['goalsAgainst'] ?? 0;
-        int points = data['points'] ?? 0;
-        List<String> form = List<String>.from(data['form'] ?? []);
-
-        // 1. REVERT old match stats if they existed
-        if (prevGoalsFor != null && prevGoalsAgainst != null) {
-          played -= 1;
-          gf -= prevGoalsFor;
-          ga -= prevGoalsAgainst;
-          
-          if (prevGoalsFor > prevGoalsAgainst) {
-            won -= 1;
-            points -= 3;
-          } else if (prevGoalsFor == prevGoalsAgainst) {
-            drawn -= 1;
-            points -= 1;
-          } else {
-            lost -= 1;
-          }
-          // Remove last form entry if merging back
-          if (form.isNotEmpty) form.removeLast();
-        }
-
-        // 2. APPLY new match stats
-        played += 1;
-        gf += goalsFor;
-        ga += goalsAgainst;
-
-        if (goalsFor > goalsAgainst) {
-          won += 1;
-          points += 3;
-          form.add('W');
-        } else if (goalsFor == goalsAgainst) {
-          drawn += 1;
-          points += 1;
-          form.add('D');
-        } else {
-          lost += 1;
-          form.add('L');
-        }
-
-        if (form.length > 5) form = form.sublist(form.length - 5);
-
-        return {
-          'played': played,
-          'won': won,
-          'drawn': drawn,
-          'lost': lost,
-          'goalsFor': gf,
-          'goalsAgainst': ga,
-          'goalDifference': gf - ga,
-          'points': points,
-          'form': form,
-        };
-      }
-
-      transaction.update(homeRef, calculateNewStats(homeDoc.data()!, homeScore, awayScore, prevGoalsFor: oldHomeScore, prevGoalsAgainst: oldAwayScore));
-      transaction.update(awayRef, calculateNewStats(awayDoc.data()!, awayScore, homeScore, prevGoalsFor: oldAwayScore, prevGoalsAgainst: oldHomeScore));
-    });
-
-    // After stats are updated, re-rank everyone to update 'position' and 'previousPosition'
-    await _reRankTeams(tournamentId);
+  Future<void> updateStandings(
+    String tournamentId,
+    String homeTeamId,
+    String awayTeamId,
+    int homeScore,
+    int awayScore, {
+    int? oldHomeScore,
+    int? oldAwayScore,
+  }) async {
+    await _rebuildStandings(tournamentId);
   }
 
-  Future<void> _reRankTeams(String tournamentId) async {
-    final snapshots = await _db.collection('standings').where('tournamentId', isEqualTo: tournamentId).get();
-    List<StandingsEntry> entries = snapshots.docs.map((doc) => StandingsEntry.fromMap(doc.data(), doc.id)).toList();
+  Future<void> _rebuildStandings(String tournamentId) async {
+    final standingsSnapshot = await _db
+        .collection('standings')
+        .where('tournamentId', isEqualTo: tournamentId)
+        .get();
+    final teamsSnapshot = await _db
+        .collection('teams')
+        .where('tournamentId', isEqualTo: tournamentId)
+        .get();
+    final matchesSnapshot = await _db
+        .collection('matches')
+        .where('tournamentId', isEqualTo: tournamentId)
+        .get();
 
-    // Sort by Points, GD, GF
-    entries.sort((a, b) {
-      if (b.points != a.points) return b.points.compareTo(a.points);
-      if (b.goalDifference != a.goalDifference) return b.goalDifference.compareTo(a.goalDifference);
-      return b.goalsFor.compareTo(a.goalsFor);
-    });
+    final previousPositions = {
+      for (final doc in standingsSnapshot.docs)
+        doc.data()['teamId'] as String: (doc.data()['position'] as int?) ?? 0,
+    };
+
+    final statsByTeam = <String, _StandingsAccumulator>{
+      for (final doc in teamsSnapshot.docs)
+        doc.id: _StandingsAccumulator(teamId: doc.id),
+    };
+
+    final finalMatches =
+        matchesSnapshot.docs
+            .map((doc) => Match.fromMap(doc.data(), doc.id))
+            .where(
+              (match) =>
+                  _isFinalMatchStatus(match.status) &&
+                  match.homeScore != null &&
+                  match.awayScore != null,
+            )
+            .toList()
+          ..sort((a, b) {
+            final byDate = a.date.compareTo(b.date);
+            if (byDate != 0) return byDate;
+            return a.id.compareTo(b.id);
+          });
+
+    for (final match in finalMatches) {
+      final homeStats = statsByTeam.putIfAbsent(
+        match.homeTeamId,
+        () => _StandingsAccumulator(teamId: match.homeTeamId),
+      );
+      final awayStats = statsByTeam.putIfAbsent(
+        match.awayTeamId,
+        () => _StandingsAccumulator(teamId: match.awayTeamId),
+      );
+
+      homeStats.applyMatch(match.homeScore!, match.awayScore!);
+      awayStats.applyMatch(match.awayScore!, match.homeScore!);
+    }
+
+    final rankedEntries = statsByTeam.values.toList()
+      ..sort((a, b) {
+        if (b.points != a.points) return b.points.compareTo(a.points);
+        if (b.goalDifference != a.goalDifference) {
+          return b.goalDifference.compareTo(a.goalDifference);
+        }
+        if (b.goalsFor != a.goalsFor) return b.goalsFor.compareTo(a.goalsFor);
+        return a.teamId.compareTo(b.teamId);
+      });
 
     final batch = _db.batch();
-    for (int i = 0; i < entries.length; i++) {
-      final entry = entries[i];
-      final newPos = i + 1;
-      
-      batch.update(_db.collection('standings').doc('${tournamentId}_${entry.teamId}'), {
-        'previousPosition': entry.position, // The current 'position' becomes 'previous'
-        'position': newPos,
-      });
+    for (int i = 0; i < rankedEntries.length; i++) {
+      final entry = rankedEntries[i];
+      final newPosition = i + 1;
+      final previousPosition = previousPositions[entry.teamId] ?? 0;
+      batch.set(
+        _db.collection('standings').doc('${tournamentId}_${entry.teamId}'),
+        {
+          'teamId': entry.teamId,
+          'tournamentId': tournamentId,
+          'position': newPosition,
+          'previousPosition': previousPosition,
+          'played': entry.played,
+          'won': entry.won,
+          'drawn': entry.drawn,
+          'lost': entry.lost,
+          'goalsFor': entry.goalsFor,
+          'goalsAgainst': entry.goalsAgainst,
+          'goalDifference': entry.goalDifference,
+          'points': entry.points,
+          'form': entry.form,
+        },
+        SetOptions(merge: true),
+      );
     }
     await batch.commit();
   }
 
   // -- User Roles & Access Control -- //
 
-  Future<void> createOrUpdateUser(String uid, String email, [String? displayName, bool? isAdmin]) async {
+  bool _isLocalAdmin(String uid) {
+    final user = _auth.currentUser;
+    return user?.uid == uid && user?.email?.toLowerCase() == 'admin@admin.com';
+  }
+
+  Future<void> createOrUpdateUser(
+    String uid,
+    String email, [
+    String? displayName,
+    bool? isAdmin,
+  ]) async {
     final docRefs = _db.collection('users').doc(uid);
-    final docSnap = await docRefs.get();
-    
-    if (!docSnap.exists) {
-      await docRefs.set({
-        'email': email,
-        'displayName': displayName ?? email.split('@')[0],
-        'isAdmin': isAdmin ?? false,
-        'teamId': null,
-      });
-    } else if (isAdmin != null) {
-      // If user exists but we want to force admin status (like the admin login button)
-      await docRefs.update({'isAdmin': isAdmin});
+    final data = <String, dynamic>{
+      'email': email,
+      'displayName': displayName ?? email.split('@')[0],
+      'lastSeenAt': FieldValue.serverTimestamp(),
+    };
+
+    if (isAdmin != null || _isLocalAdmin(uid)) {
+      data['isAdmin'] = isAdmin ?? true;
+    }
+
+    try {
+      await docRefs.set({...data}, SetOptions(merge: true));
+    } on FirebaseException catch (e) {
+      debugPrint('User profile write failed: ${e.code} ${e.message}');
+      if (e.code != 'permission-denied') rethrow;
     }
   }
 
   Future<AppUser?> getUserProfile(String uid) async {
-    final doc = await _db.collection('users').doc(uid).get();
-    if (doc.exists) {
-      return AppUser.fromMap(doc.data()!, doc.id);
+    try {
+      final doc = await _db.collection('users').doc(uid).get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        if (_isLocalAdmin(uid)) {
+          data['isAdmin'] = true;
+        }
+        return AppUser.fromMap(data, doc.id);
+      }
+    } on FirebaseException catch (e) {
+      debugPrint('User profile read failed: ${e.code} ${e.message}');
+      if (e.code != 'permission-denied') rethrow;
+    }
+    if (_isLocalAdmin(uid)) {
+      return AppUser(
+        uid: uid,
+        email: _auth.currentUser?.email ?? 'admin@admin.com',
+        isAdmin: true,
+      );
     }
     return null;
   }
 
   Future<bool> isAdmin(String uid) async {
+    if (_isLocalAdmin(uid)) return true;
     final user = await getUserProfile(uid);
     return user?.isAdmin ?? false;
   }
 
   Future<void> claimTeam(String uid, String teamId, String email) async {
-    final batch = _db.batch();
+    await _db.runTransaction((transaction) async {
+      final userRef = _db.collection('users').doc(uid);
+      final teamRef = _db.collection('teams').doc(teamId);
+      final userDoc = await transaction.get(userRef);
+      final teamDoc = await transaction.get(teamRef);
 
-    // 1. Update user profile with claimed team
-    final userRef = _db.collection('users').doc(uid);
-    batch.update(userRef, {'teamId': teamId});
+      if (!teamDoc.exists) {
+        throw Exception("This team no longer exists.");
+      }
 
-    // 2. Update team profile with player owner
-    final teamRef = _db.collection('teams').doc(teamId);
-    batch.update(teamRef, {
-      'playerId': uid,
-      'playerEmail': email,
+      final existingOwner = teamDoc.data()?['playerId'];
+      if (existingOwner != null &&
+          existingOwner.toString().isNotEmpty &&
+          existingOwner != uid) {
+        throw Exception("This team has already been claimed.");
+      }
+
+      final currentTeamId = userDoc.data()?['teamId'];
+      if (currentTeamId != null &&
+          currentTeamId.toString().isNotEmpty &&
+          currentTeamId != teamId) {
+        throw Exception("Your account is already linked to another team.");
+      }
+
+      transaction.set(userRef, {
+        'teamId': teamId,
+        'email': email,
+      }, SetOptions(merge: true));
+      transaction.update(teamRef, {'playerId': uid, 'playerEmail': email});
     });
-
-    await batch.commit();
   }
 
   Future<void> handleDelayedMatches() async {
@@ -254,38 +379,26 @@ class FirebaseService {
     final graceTime = now.subtract(const Duration(hours: 24));
 
     try {
-      final snapshot = await _db.collection('matches')
+      final snapshot = await _db
+          .collection('matches')
           .where('status', isEqualTo: 'Pending')
           .get();
 
       for (var doc in snapshot.docs) {
         final match = Match.fromMap(doc.data(), doc.id);
-        
-        if (match.date.isBefore(graceTime)) {
-          if (match.postponedCount == 0) {
-            // -- POSTPONE (1st time) --
-            // Reschedule to next standard day (Sat or Wed)
-            DateTime newDate;
-            if (match.date.weekday == DateTime.saturday) {
-              newDate = match.date.add(const Duration(days: 4)); // Next Wednesday
-            } else if (match.date.weekday == DateTime.wednesday) {
-              newDate = match.date.add(const Duration(days: 3)); // Next Saturday
-            } else {
-              newDate = match.date.add(const Duration(days: 3)); // Default
-            }
 
-            await doc.reference.update({
-              'date': newDate.toIso8601String(),
-              'postponedCount': 1,
-              // Keep status as Pending so it shows up in future checks
-            });
-            debugPrint("AUTOMATION: Match ${match.id} postponed to ${newDate.toIso8601String()}");
-          } else {
-            // -- AUTO-RESOLVE (2nd delay) --
-            // Set to 0-0 Draw
-            await _autoResolveDelayedMatch(match);
-            debugPrint("AUTOMATION: Match ${match.id} auto-resolved to 0-0 (Forfeit/Draw)");
-          }
+        if (match.date.isBefore(graceTime)) {
+          final newDate = await _findNextDoubleHeaderDate(match, now);
+
+          await doc.reference.update({
+            'date': newDate.toIso8601String(),
+            'postponedCount': match.postponedCount + 1,
+            'postponedFrom': match.date.toIso8601String(),
+            'resolutionReason': 'postponed_to_next_team_matchday',
+          });
+          debugPrint(
+            "AUTOMATION: Match ${match.id} postponed to ${newDate.toIso8601String()}",
+          );
         }
       }
     } catch (e) {
@@ -293,17 +406,36 @@ class FirebaseService {
     }
   }
 
-  Future<void> _autoResolveDelayedMatch(Match match) async {
-    // We use the existing submitMatchResult logic but forced to 0-0
-    await submitMatchResult(
-      matchId: match.id,
-      tournamentId: match.tournamentId,
-      homeTeamId: match.homeTeamId,
-      awayTeamId: match.awayTeamId,
-      homeScore: 0,
-      awayScore: 0,
-      isAdmin: true,
-    );
+  Future<DateTime> _findNextDoubleHeaderDate(
+    Match delayedMatch,
+    DateTime now,
+  ) async {
+    final snapshot = await _db
+        .collection('matches')
+        .where('tournamentId', isEqualTo: delayedMatch.tournamentId)
+        .where('status', isEqualTo: 'Pending')
+        .get();
+
+    final upcomingTeamMatches =
+        snapshot.docs
+            .where((doc) => doc.id != delayedMatch.id)
+            .map((doc) => Match.fromMap(doc.data(), doc.id))
+            .where(
+              (match) =>
+                  match.date.isAfter(now) &&
+                  (match.homeTeamId == delayedMatch.homeTeamId ||
+                      match.awayTeamId == delayedMatch.homeTeamId ||
+                      match.homeTeamId == delayedMatch.awayTeamId ||
+                      match.awayTeamId == delayedMatch.awayTeamId),
+            )
+            .toList()
+          ..sort((a, b) => a.date.compareTo(b.date));
+
+    if (upcomingTeamMatches.isNotEmpty) {
+      return upcomingTeamMatches.first.date;
+    }
+
+    return _nextPlayDateAfter(now);
   }
 
   // -- Seeding Initial Data -- //
@@ -325,7 +457,7 @@ class FirebaseService {
     await clearCollection('tournaments');
 
     debugPrint("Database wiped. Seeding fresh 2025/26 Season data...");
-    
+
     // 1. Create a default Tournament
     const tournamentId = 'tournament_king_2025';
     await _db.collection('tournaments').doc(tournamentId).set({
@@ -370,14 +502,14 @@ class FirebaseService {
         await _db.collection('matches').doc('match_1_$i').set({
           'tournamentId': tournamentId,
           'homeTeamId': 'team_$i',
-          'awayTeamId': 'team_${i+1}',
+          'awayTeamId': 'team_${i + 1}',
           'matchweek': '1',
           'status': 'Pending',
           'date': DateTime.now().add(const Duration(days: 2)).toIso8601String(),
         });
       }
     }
-    
+
     // Also ensure the admin user exists with admin rights
     await _db.collection('users').doc('admin_user_id').set({
       'email': 'admin@admin.com',
@@ -389,9 +521,12 @@ class FirebaseService {
     debugPrint("Data sync complete!");
   }
 
-  Future<String> createNewTournament(Tournament tournament, List<Team> teams) async {
+  Future<String> createNewTournament(
+    Tournament tournament,
+    List<Team> teams,
+  ) async {
     final batch = _db.batch();
-    
+
     // 1. Create Tournament Document
     final tournamentRef = _db.collection('tournaments').doc();
     batch.set(tournamentRef, tournament.toMap());
@@ -405,7 +540,9 @@ class FirebaseService {
       batch.set(teamRef, teamData);
       teamIds.add(teamRef.id);
 
-      final standingsRef = _db.collection('standings').doc('${tournamentRef.id}_${teamRef.id}');
+      final standingsRef = _db
+          .collection('standings')
+          .doc('${tournamentRef.id}_${teamRef.id}');
       batch.set(standingsRef, {
         'teamId': teamRef.id,
         'tournamentId': tournamentRef.id,
@@ -422,39 +559,43 @@ class FirebaseService {
       });
     }
 
-    // 3. Generate Fixtures (2 games per week for 6 weeks = 12 matchweeks)
-    final List<String> schedule = List.from(teamIds);
-    schedule.shuffle(); // Randomize teams
-    if (schedule.length % 2 != 0) schedule.add('BYE');
-    int halfSize = schedule.length ~/ 2;
+    // 3. Generate Fixtures: double round robin over 4 months, 4 play days per week.
+    final fixtures = _generateDoubleRoundRobin(teamIds);
+    final playDates = _generateFourMonthPlayDates(tournament.createdAt);
+    final matchesPerDate = (fixtures.length / playDates.length).ceil().clamp(
+      1,
+      10,
+    );
+    var fixtureIndex = 0;
 
-    for (int round = 0; round < 12; round++) {
-      for (int i = 0; i < halfSize; i++) {
-        String home = schedule[i];
-        String away = schedule[schedule.length - 1 - i];
+    for (
+      var dateIndex = 0;
+      dateIndex < playDates.length && fixtureIndex < fixtures.length;
+      dateIndex++
+    ) {
+      final playDate = playDates[dateIndex];
+      final matchweek = (dateIndex + 1).toString();
 
-        if (home != 'BYE' && away != 'BYE') {
-          final matchRef = _db.collection('matches').doc();
-          
-          // weekIndex 0..5 (6 weeks)
-          int weekIndex = round ~/ 2; 
-          // 2 matches per week: Day 0 (Sat) and Day 4 (Wed)
-          int dayOffset = (round % 2 == 0) ? 0 : 4; 
-          
-          int totalDays = (weekIndex * 7) + dayOffset + 7; // Starts in 1 week
+      for (
+        var slot = 0;
+        slot < matchesPerDate && fixtureIndex < fixtures.length;
+        slot++
+      ) {
+        final fixture = fixtures[fixtureIndex++];
+        final matchRef = _db.collection('matches').doc();
 
-          batch.set(matchRef, {
-            'tournamentId': tournamentRef.id,
-            'homeTeamId': home,
-            'awayTeamId': away,
-            'matchweek': (weekIndex + 1).toString(), // Changed from round + 1 to group 2 games per week
-            'status': 'Pending',
-            'date': DateTime.now().add(Duration(days: totalDays)).toIso8601String(),
-          });
-        }
+        batch.set(matchRef, {
+          'tournamentId': tournamentRef.id,
+          'homeTeamId': fixture.homeTeamId,
+          'awayTeamId': fixture.awayTeamId,
+          'matchweek': matchweek,
+          'status': 'Pending',
+          'date': playDate.toIso8601String(),
+          'postponedCount': 0,
+          'autoResolved': false,
+          'resolutionReason': null,
+        });
       }
-      // Round Robin rotation
-      schedule.insert(1, schedule.removeLast());
     }
 
     await batch.commit();
@@ -463,7 +604,7 @@ class FirebaseService {
 
   Future<void> joinTournament(String tournamentId, Team team) async {
     final batch = _db.batch();
-    
+
     // 1. Create Team Document
     final teamRef = _db.collection('teams').doc();
     final teamData = team.toMap();
@@ -491,10 +632,11 @@ class FirebaseService {
   }
 
   Future<List<String>> getUsedLogos(String tournamentId) async {
-    final snapshot = await _db.collection('teams')
+    final snapshot = await _db
+        .collection('teams')
         .where('tournamentId', isEqualTo: tournamentId)
         .get();
-    
+
     return snapshot.docs.map((doc) => doc.data()['logoUrl'] as String).toList();
   }
 
@@ -516,12 +658,7 @@ class FirebaseService {
       }
     }
 
-    // 2. Permission Check: If already FT and not admin, block edit
-    if (existingMatch?.status == 'FT' && !isAdmin) {
-      throw Exception("This result is locked. Only admins can edit finalized results.");
-    }
-
-    // 3. Update or Create Match
+    // 2. Update or Create Match. Rules and UI restrict normal users to their own team.
     final targetMatchId = matchId ?? _db.collection('matches').doc().id;
     await _db.collection('matches').doc(targetMatchId).set({
       'tournamentId': tournamentId,
@@ -530,30 +667,45 @@ class FirebaseService {
       'homeScore': homeScore,
       'awayScore': awayScore,
       'status': 'FT',
-      'date': existingMatch?.date.toIso8601String() ?? DateTime.now().toIso8601String(),
+      'date':
+          existingMatch?.date.toIso8601String() ??
+          DateTime.now().toIso8601String(),
       'matchweek': existingMatch?.matchweek ?? 'Manual',
+      'autoResolved': false,
+      'resolutionReason': null,
     }, SetOptions(merge: true));
 
-    // 4. Update Standings
-    final isFinalized = existingMatch?.status == 'FT' || existingMatch?.status == 'Finished';
-    await updateStandings(
-      tournamentId,
-      homeTeamId,
-      awayTeamId,
-      homeScore,
-      awayScore,
-      oldHomeScore: isFinalized ? existingMatch?.homeScore : null,
-      oldAwayScore: isFinalized ? existingMatch?.awayScore : null,
-    );
+    // 3. Update Standings
+    final oldHomeScore = existingMatch?.homeScore;
+    final oldAwayScore = existingMatch?.awayScore;
+    try {
+      await updateStandings(
+        tournamentId,
+        homeTeamId,
+        awayTeamId,
+        homeScore,
+        awayScore,
+        oldHomeScore: oldHomeScore,
+        oldAwayScore: oldAwayScore,
+      );
+    } on FirebaseException catch (e) {
+      debugPrint(
+        'Standings update failed after saving result: ${e.code} ${e.message}',
+      );
+      if (e.code != 'permission-denied') rethrow;
+    }
   }
 
-  Future<void> updateMatchStatus(String matchId, String status, [int? homeScore, int? awayScore]) async {
-    final data = <String, dynamic>{
-      'status': status,
-    };
+  Future<void> updateMatchStatus(
+    String matchId,
+    String status, [
+    int? homeScore,
+    int? awayScore,
+  ]) async {
+    final data = <String, dynamic>{'status': status};
     if (homeScore != null) data['homeScore'] = homeScore;
     if (awayScore != null) data['awayScore'] = awayScore;
-    
+
     await _db.collection('matches').doc(matchId).update(data);
   }
 
@@ -564,19 +716,28 @@ class FirebaseService {
     batch.delete(_db.collection('tournaments').doc(tournamentId));
 
     // 2. Delete all matches for this tournament
-    final matches = await _db.collection('matches').where('tournamentId', isEqualTo: tournamentId).get();
+    final matches = await _db
+        .collection('matches')
+        .where('tournamentId', isEqualTo: tournamentId)
+        .get();
     for (var doc in matches.docs) {
       batch.delete(doc.reference);
     }
 
     // 3. Delete all standings for this tournament
-    final standings = await _db.collection('standings').where('tournamentId', isEqualTo: tournamentId).get();
+    final standings = await _db
+        .collection('standings')
+        .where('tournamentId', isEqualTo: tournamentId)
+        .get();
     for (var doc in standings.docs) {
       batch.delete(doc.reference);
     }
 
     // 4. Delete all teams for this tournament
-    final teams = await _db.collection('teams').where('tournamentId', isEqualTo: tournamentId).get();
+    final teams = await _db
+        .collection('teams')
+        .where('tournamentId', isEqualTo: tournamentId)
+        .get();
     for (var doc in teams.docs) {
       batch.delete(doc.reference);
     }
@@ -596,30 +757,152 @@ class FirebaseService {
   }
 
   Future<void> deleteUserAccount(String uid) async {
-    final batch = _db.batch();
+    try {
+      final userRef = _db.collection('users').doc(uid);
+      final userDoc = await userRef.get();
 
-    // 1. Get user profile to check for teamId
-    final userDoc = await _db.collection('users').doc(uid).get();
-    
-    if (userDoc.exists) {
-      final teamId = userDoc.data()?['teamId'];
+      if (userDoc.exists) {
+        final teamId = userDoc.data()?['teamId'];
 
-      // 2. If user had a team, release it
-      if (teamId != null) {
-        final teamRef = _db.collection('teams').doc(teamId);
-        final teamSnap = await teamRef.get();
-        if (teamSnap.exists) {
-          batch.update(teamRef, {
-            'playerId': null,
-            'playerEmail': null,
-          });
+        // 2. If user had a team, release it
+        if (teamId != null && teamId.toString().trim().isNotEmpty) {
+          try {
+            final teamRef = _db.collection('teams').doc(teamId.toString());
+            final teamSnap = await teamRef.get();
+            if (teamSnap.exists) {
+              await teamRef.update({'playerId': null, 'playerEmail': null});
+            }
+          } catch (e) {
+            debugPrint("Non-critical error releasing team: $e");
+          }
         }
+
+        // 3. Delete user profile
+        await userRef.delete();
       }
-
-      // 3. Delete user profile
-      batch.delete(_db.collection('users').doc(uid));
+    } catch (e) {
+      debugPrint("Critical error in deleteUserAccount: $e");
+      rethrow;
     }
-
-    await batch.commit();
   }
+}
+
+class _StandingsAccumulator {
+  _StandingsAccumulator({required this.teamId});
+
+  final String teamId;
+  int played = 0;
+  int won = 0;
+  int drawn = 0;
+  int lost = 0;
+  int goalsFor = 0;
+  int goalsAgainst = 0;
+  int points = 0;
+  final List<String> _formHistory = [];
+
+  void applyMatch(int scored, int conceded) {
+    played += 1;
+    goalsFor += scored;
+    goalsAgainst += conceded;
+
+    if (scored > conceded) {
+      won += 1;
+      points += 3;
+      _formHistory.add('W');
+    } else if (scored == conceded) {
+      drawn += 1;
+      points += 1;
+      _formHistory.add('D');
+    } else {
+      lost += 1;
+      _formHistory.add('L');
+    }
+  }
+
+  int get goalDifference => goalsFor - goalsAgainst;
+
+  List<String> get form => _formHistory.length <= 5
+      ? List<String>.from(_formHistory)
+      : _formHistory.sublist(_formHistory.length - 5);
+}
+
+class _FixtureDraft {
+  const _FixtureDraft({required this.homeTeamId, required this.awayTeamId});
+
+  final String homeTeamId;
+  final String awayTeamId;
+}
+
+List<_FixtureDraft> _generateDoubleRoundRobin(List<String> teamIds) {
+  final schedule = List<String>.from(teamIds)..shuffle();
+  if (schedule.length.isOdd) schedule.add('BYE');
+
+  final halfSize = schedule.length ~/ 2;
+  final rounds = schedule.length - 1;
+  final firstLeg = <_FixtureDraft>[];
+
+  for (var round = 0; round < rounds; round++) {
+    for (var i = 0; i < halfSize; i++) {
+      final first = schedule[i];
+      final second = schedule[schedule.length - 1 - i];
+
+      if (first != 'BYE' && second != 'BYE') {
+        final flipHome = round.isOdd;
+        firstLeg.add(
+          _FixtureDraft(
+            homeTeamId: flipHome ? second : first,
+            awayTeamId: flipHome ? first : second,
+          ),
+        );
+      }
+    }
+    schedule.insert(1, schedule.removeLast());
+  }
+
+  final secondLeg = firstLeg
+      .map(
+        (fixture) => _FixtureDraft(
+          homeTeamId: fixture.awayTeamId,
+          awayTeamId: fixture.homeTeamId,
+        ),
+      )
+      .toList();
+
+  return [...firstLeg, ...secondLeg];
+}
+
+List<DateTime> _generateFourMonthPlayDates(DateTime createdAt) {
+  final start = _nextPlayDateAfter(createdAt.subtract(const Duration(days: 1)));
+  final end = DateTime(start.year, start.month + 4, start.day);
+  final dates = <DateTime>[];
+  var cursor = DateTime(start.year, start.month, start.day, 20);
+
+  while (cursor.isBefore(end)) {
+    if (_isLeaguePlayDay(cursor)) {
+      dates.add(cursor);
+    }
+    cursor = cursor.add(const Duration(days: 1));
+  }
+
+  return dates;
+}
+
+DateTime _nextPlayDateAfter(DateTime from) {
+  var cursor = DateTime(
+    from.year,
+    from.month,
+    from.day,
+    20,
+  ).add(const Duration(days: 1));
+  while (!_isLeaguePlayDay(cursor)) {
+    cursor = cursor.add(const Duration(days: 1));
+  }
+  return cursor;
+}
+
+bool _isLeaguePlayDay(DateTime date) {
+  return date.weekday == DateTime.monday ||
+      date.weekday == DateTime.wednesday ||
+      date.weekday == DateTime.friday ||
+      date.weekday == DateTime.saturday;
 }

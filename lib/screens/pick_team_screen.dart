@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -30,7 +29,7 @@ class _PickTeamScreenState extends State<PickTeamScreen> {
       final firebaseService = context.read<FirebaseService>();
       await firebaseService.claimTeam(user.uid, team.id, user.email ?? '');
       await NotificationService.saveTokenToFirestore(user.uid);
-      
+
       if (mounted) {
         // Clear routes and go to home
         while (context.canPop()) {
@@ -40,9 +39,9 @@ class _PickTeamScreenState extends State<PickTeamScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to claim team: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to claim team: $e')));
       }
       setState(() => _isClaiming = false);
     }
@@ -55,7 +54,14 @@ class _PickTeamScreenState extends State<PickTeamScreen> {
     return Scaffold(
       backgroundColor: AppTheme.lightBackground,
       appBar: AppBar(
-        title: Text('CLAIM YOUR TEAM', style: GoogleFonts.outfit(fontSize: Responsive.sp(context, 18), fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+        title: Text(
+          'CLAIM YOUR TEAM',
+          style: TextStyle(
+            fontSize: Responsive.sp(context, 18),
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.5,
+          ),
+        ),
         backgroundColor: AppTheme.primaryPurple,
         foregroundColor: Colors.white,
         centerTitle: true,
@@ -64,7 +70,7 @@ class _PickTeamScreenState extends State<PickTeamScreen> {
       body: Stack(
         children: [
           const LineDecoration(opacity: 0.05),
-          
+
           if (allTeams.isEmpty)
             Center(
               child: Padding(
@@ -72,17 +78,28 @@ class _PickTeamScreenState extends State<PickTeamScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.sentiment_dissatisfied, size: 80, color: Colors.grey),
+                    const Icon(
+                      Icons.sentiment_dissatisfied,
+                      size: 80,
+                      color: Colors.grey,
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       "No teams available to claim.",
-                      style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.primaryPurple),
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryPurple,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
                     Text(
                       "The admin might need to create more teams or reset the season.",
-                      style: GoogleFonts.inter(fontSize: 16, color: Colors.grey.shade600),
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey.shade600,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -104,7 +121,7 @@ class _PickTeamScreenState extends State<PickTeamScreen> {
                 return _buildTeamCard(team);
               },
             ),
-            
+
           if (_isClaiming)
             Container(
               color: Colors.black54,
@@ -119,7 +136,7 @@ class _PickTeamScreenState extends State<PickTeamScreen> {
 
   Widget _buildTeamCard(Team team) {
     bool isClaimed = team.playerId != null;
-    
+
     return Card(
       elevation: isClaimed ? 0 : 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -135,7 +152,7 @@ class _PickTeamScreenState extends State<PickTeamScreen> {
                 end: Alignment.bottomRight,
                 colors: [
                   isClaimed ? Colors.grey.shade200 : Colors.white,
-                  isClaimed ? Colors.grey.shade300 : Colors.grey.shade50
+                  isClaimed ? Colors.grey.shade300 : Colors.grey.shade50,
                 ],
               ),
             ),
@@ -151,7 +168,12 @@ class _PickTeamScreenState extends State<PickTeamScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 10,
+                            ),
+                          ],
                         ),
                         padding: const EdgeInsets.all(10),
                         child: TeamLogo(
@@ -165,10 +187,10 @@ class _PickTeamScreenState extends State<PickTeamScreen> {
                         child: Text(
                           team.name,
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.bold, 
-                            fontSize: Responsive.sp(context, 16), 
-                            color: AppTheme.primaryPurple
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: Responsive.sp(context, 16),
+                            color: AppTheme.primaryPurple,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -177,20 +199,33 @@ class _PickTeamScreenState extends State<PickTeamScreen> {
                       const SizedBox(height: 4),
                       Text(
                         team.managerName,
-                        style: GoogleFonts.inter(fontSize: Responsive.sp(context, 10), color: Colors.grey.shade700, fontWeight: FontWeight.normal),
+                        style: TextStyle(
+                          fontSize: Responsive.sp(context, 10),
+                          color: Colors.grey.shade700,
+                          fontWeight: FontWeight.normal,
+                        ),
                       ),
                       if (isClaimed) ...[
                         const SizedBox(height: 12),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.red.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                            border: Border.all(
+                              color: Colors.red.withValues(alpha: 0.2),
+                            ),
                           ),
                           child: Text(
                             "ALREADY SELECTED",
-                            style: GoogleFonts.outfit(fontSize: 8, color: Colors.red.shade800, fontWeight: FontWeight.w900),
+                            style: TextStyle(
+                              fontSize: 8,
+                              color: Colors.red.shade800,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
                       ],
@@ -201,7 +236,11 @@ class _PickTeamScreenState extends State<PickTeamScreen> {
                   Positioned(
                     right: 8,
                     top: 8,
-                    child: Icon(Icons.lock, size: 16, color: Colors.grey.shade600),
+                    child: Icon(
+                      Icons.lock,
+                      size: 16,
+                      color: Colors.grey.shade600,
+                    ),
                   ),
               ],
             ),
@@ -217,7 +256,13 @@ class _PickTeamScreenState extends State<PickTeamScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text("Confirm if this is your team", style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: AppTheme.primaryPurple)),
+        title: Text(
+          "Confirm if this is your team",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: AppTheme.primaryPurple,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -231,28 +276,38 @@ class _PickTeamScreenState extends State<PickTeamScreen> {
             Text(
               "Team: ${team.name}\nManager: ${team.managerName}",
               textAlign: TextAlign.center,
-              style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+              style: TextStyle(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 16),
-            const Text("Once confirmed, your account will be linked to this team automatically."),
+            const Text(
+              "Once confirmed, your account will be linked to this team automatically.",
+            ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text("CANCEL", style: GoogleFonts.outfit(color: Colors.grey, fontWeight: FontWeight.bold)),
+            child: Text(
+              "CANCEL",
+              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.accentGreen,
               foregroundColor: AppTheme.primaryPurple,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             onPressed: () {
               Navigator.of(ctx).pop();
               _claimTeam(team);
             },
-            child: Text("CONTINUE", style: GoogleFonts.outfit(fontWeight: FontWeight.w900)),
+            child: Text(
+              "CONTINUE",
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
           ),
         ],
       ),

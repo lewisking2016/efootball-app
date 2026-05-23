@@ -1,7 +1,8 @@
+import 'dart:math' as math;
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -11,154 +12,281 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
-  late AnimationController _introController;
-  late AnimationController _pulseController;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _pulseAnimation;
+class _SplashScreenState extends State<SplashScreen>
+    with TickerProviderStateMixin {
+  late final AnimationController _introController;
+  late final AnimationController _crestController;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
 
   @override
   void initState() {
     super.initState();
-
-    // Main entry animation
-    _introController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800));
-    _scaleAnimation = Tween<double>(begin: 0.6, end: 1.0)
-        .animate(CurvedAnimation(parent: _introController, curve: Curves.easeOutCubic));
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0)
-        .animate(CurvedAnimation(parent: _introController, curve: const Interval(0.2, 1.0, curve: Curves.easeIn)));
-
-    // Continuous pulse glow animation
-    _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 2000))..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.08)
-        .animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
+    _introController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 950),
+    );
+    _crestController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3800),
+    )..repeat();
+    _fade = CurvedAnimation(
+      parent: _introController,
+      curve: Curves.easeOutCubic,
+    );
+    _slide = Tween(
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(_fade);
 
     _introController.forward();
+    _routeAfterAuthSettles();
+  }
 
-    Future.delayed(const Duration(milliseconds: 3500), () async {
-      if (mounted) {
-        // Wait safely for Firebase Auth to initialize its local IndexedDB state
-        final user = await FirebaseAuth.instance.authStateChanges().first;
-        if (mounted) {
-          if (user != null) {
-            context.go('/home');
-          } else {
-            context.go('/login');
-          }
-        }
-      }
-    });
+  Future<void> _routeAfterAuthSettles() async {
+    await Future.delayed(const Duration(milliseconds: 1800));
+    final user = await FirebaseAuth.instance.authStateChanges().first;
+    if (!mounted) return;
+    context.go(user == null ? '/login' : '/home');
   }
 
   @override
   void dispose() {
     _introController.dispose();
-    _pulseController.dispose();
+    _crestController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF3D195B), // Authentic EPL Purple
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Subtle EPL secondary glow
-          Container(
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: Alignment.center,
-                radius: 1.2,
-                colors: [
-                  const Color(0xFF5D2A8E).withValues(alpha: 0.3), // Lighter purple glow
-                  const Color(0xFF3D195B),
-                ],
+      body: _SplashAmbientBackground(
+        child: SafeArea(
+          child: Stack(
+            children: [
+              Center(
+                child: FadeTransition(
+                  opacity: _fade,
+                  child: SlideTransition(
+                    position: _slide,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _SplashCrest(controller: _crestController, size: 130),
+                          const SizedBox(height: 28),
+                          Text(
+                            "EFOOTBALL 2.0",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppTheme.accentGreen,
+                              fontSize: Responsive.sp(context, 30),
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 2,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "LEAGUES. TEAMS. RESULTS.",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.78),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 2.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
-
-          // Core content
-          Center(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: ScaleTransition(
-                scale: _scaleAnimation,
+              Positioned(
+                left: 24,
+                right: 24,
+                bottom: 30,
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // The main pulsating logo without white edges
-                    ScaleTransition(
-                      scale: _pulseAnimation,
-                      child: Hero(
-                        tag: 'efl_logo',
-                        child: Container(
-                          width: Responsive.sp(context, 160),
-                          height: Responsive.sp(context, 160),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF00FF85).withValues(alpha: 0.3), // EPL Green accent
-                                blurRadius: Responsive.sp(context, 50),
-                                spreadRadius: 5,
-                              ),
-                            ],
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Image.asset(
-                            'assets/efootballlogo/efllogo.jpeg',
-                            fit: BoxFit.cover,
-                          ),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        minHeight: 5,
+                        backgroundColor: Colors.white.withValues(alpha: 0.12),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          AppTheme.accentGreen,
                         ),
                       ),
                     ),
-                    SizedBox(height: Responsive.sp(context, 40)),
-                    // Classy text treatment
+                    const SizedBox(height: 12),
                     Text(
-                      "THE NEW HOME OF",
-                      style: GoogleFonts.outfit(
-                        fontSize: Responsive.sp(context, 12),
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 6,
-                        color: Colors.white.withValues(alpha: 0.6),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ShaderMask(
-                      shaderCallback: (bounds) => const LinearGradient(
-                        colors: [Color(0xFF38003C), Color(0xFFE90052)], // EPL Purple to Pink gradient
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ).createShader(bounds),
-                      child: Text(
-                        "EFOOTBALL MANAGER",
-                        style: GoogleFonts.outfit(
-                          fontSize: Responsive.sp(context, 26),
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 2,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: Responsive.sp(context, 40)),
-                     SizedBox(
-                      width: Responsive.sp(context, 30),
-                      height: Responsive.sp(context, 30),
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withValues(alpha: 0.4)),
+                      "Preparing matchday",
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.58),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
+class _SplashAmbientBackground extends StatelessWidget {
+  const _SplashAmbientBackground({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF21002B),
+            Color(0xFF38003C),
+            Color(0xFF4E0075),
+            Color(0xFF111E6A),
+          ],
+          stops: [0.0, 0.42, 0.74, 1.0],
+        ),
+      ),
+      child: CustomPaint(painter: _SplashAmbientPainter(), child: child),
+    );
+  }
+}
+
+class _SplashAmbientPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final blueSweep = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
+        colors: [Color(0x002FD8FF), Color(0x552FD8FF), Color(0x00FFFFFF)],
+      ).createShader(Offset.zero & size);
+
+    final whiteSweep = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+        colors: [
+          Colors.white.withValues(alpha: 0.0),
+          Colors.white.withValues(alpha: 0.13),
+          Colors.white.withValues(alpha: 0.0),
+        ],
+      ).createShader(Offset.zero & size);
+
+    final bluePath = Path()
+      ..moveTo(size.width * 0.64, 0)
+      ..cubicTo(
+        size.width,
+        size.height * 0.18,
+        size.width * 0.72,
+        size.height * 0.58,
+        size.width,
+        size.height * 0.78,
+      )
+      ..lineTo(size.width, size.height)
+      ..cubicTo(
+        size.width * 0.54,
+        size.height * 0.74,
+        size.width * 0.84,
+        size.height * 0.23,
+        size.width * 0.32,
+        0,
+      )
+      ..close();
+
+    final whitePath = Path()
+      ..moveTo(0, size.height * 0.24)
+      ..cubicTo(
+        size.width * 0.35,
+        size.height * 0.18,
+        size.width * 0.62,
+        size.height * 0.34,
+        size.width,
+        size.height * 0.27,
+      )
+      ..lineTo(size.width, size.height * 0.41)
+      ..cubicTo(
+        size.width * 0.62,
+        size.height * 0.49,
+        size.width * 0.3,
+        size.height * 0.34,
+        0,
+        size.height * 0.42,
+      )
+      ..close();
+
+    canvas.drawPath(bluePath, blueSweep);
+    canvas.drawPath(whitePath, whiteSweep);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _SplashCrest extends StatelessWidget {
+  const _SplashCrest({required this.controller, required this.size});
+
+  final AnimationController controller;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, child) {
+        final t = controller.value * math.pi * 2;
+        return Transform.translate(
+          offset: Offset(0, math.sin(t) * 5),
+          child: Transform.rotate(
+            angle: math.sin(t) * 0.022,
+            child: Container(
+              width: size,
+              height: size,
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: SweepGradient(
+                  transform: GradientRotation(t),
+                  colors: const [
+                    Color(0xFFFFFFFF),
+                    Color(0xFF2FD8FF),
+                    Color(0xFF00FF85),
+                    Color(0xFFFFFFFF),
+                  ],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF2FD8FF).withValues(alpha: 0.28),
+                    blurRadius: 38,
+                    spreadRadius: 3,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/efootballlogo/efllogo.jpeg',
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
