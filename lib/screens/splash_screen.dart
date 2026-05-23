@@ -46,10 +46,18 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _routeAfterAuthSettles() async {
     await Future.delayed(const Duration(milliseconds: 1800));
-    final user = await FirebaseAuth.instance.authStateChanges().first;
-    final keepSession = await SessionService.keepOrEndCurrentSession(user);
-    if (!mounted) return;
-    context.go(keepSession ? '/home' : '/login');
+    try {
+      final user = await FirebaseAuth.instance.authStateChanges().first.timeout(
+        const Duration(seconds: 8),
+      );
+      final keepSession = await SessionService.keepOrEndCurrentSession(user);
+      if (!mounted) return;
+      context.go(keepSession ? '/home' : '/login');
+    } catch (e) {
+      debugPrint("Auth startup check failed: $e");
+      if (!mounted) return;
+      context.go('/login');
+    }
   }
 
   @override

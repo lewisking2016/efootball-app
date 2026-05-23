@@ -61,6 +61,7 @@ void callbackDispatcher() {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  Object? startupError;
 
   try {
     await Firebase.initializeApp(
@@ -71,6 +72,7 @@ void main() async {
       cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
     );
   } catch (e) {
+    startupError = e;
     debugPrint("Firebase init error: $e");
   }
 
@@ -83,13 +85,15 @@ void main() async {
   }
 
   // Run the app first so the UI isn't blocked by permission dialogs or background setup
-  runApp(const EFootballApp());
+  runApp(EFootballApp(startupError: startupError));
 
-  // Initialize Push Notifications asynchronously
-  setupNotifications();
+  if (startupError == null) {
+    // Initialize Push Notifications asynchronously
+    setupNotifications();
 
-  // Initialize Workmanager for Free Background Tasks (Android only for now)
-  setupWorkmanager();
+    // Initialize Workmanager for Free Background Tasks (Android only for now)
+    setupWorkmanager();
+  }
 }
 
 Future<void> setupNotifications() async {
@@ -189,10 +193,21 @@ final GoRouter _router = GoRouter(
 );
 
 class EFootballApp extends StatelessWidget {
-  const EFootballApp({super.key});
+  const EFootballApp({super.key, this.startupError});
+
+  final Object? startupError;
 
   @override
   Widget build(BuildContext context) {
+    if (startupError != null) {
+      return MaterialApp(
+        title: 'EFL Manager',
+        theme: AppTheme.lightTheme,
+        debugShowCheckedModeBanner: false,
+        home: StartupErrorScreen(error: startupError!),
+      );
+    }
+
     final firebaseService = FirebaseService();
 
     return MultiProvider(
@@ -220,6 +235,65 @@ class EFootballApp extends StatelessWidget {
         theme: AppTheme.lightTheme,
         routerConfig: _router,
         debugShowCheckedModeBanner: false,
+      ),
+    );
+  }
+}
+
+class StartupErrorScreen extends StatelessWidget {
+  const StartupErrorScreen({super.key, required this.error});
+
+  final Object error;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.primaryPurple,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.error_outline_rounded,
+                  color: AppTheme.accentGreen,
+                  size: 54,
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  "App startup failed",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  "Firebase could not start. Check the APK configuration and try again.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.78),
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  error.toString(),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.58),
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

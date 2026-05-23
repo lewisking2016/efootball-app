@@ -1,10 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class SessionService {
-  static const _rememberedUidKey = 'remembered_uid';
-  static const _rememberUntilKey = 'remember_until_ms';
+  static const _rememberUntilField = 'rememberSessionUntil';
+  static const _rememberEnabledField = 'rememberSessionEnabled';
   static const rememberedDuration = Duration(days: 30);
 
   static Future<void> prepareAuthPersistence({required bool rememberMe}) async {
@@ -19,28 +19,31 @@ class SessionService {
     required User user,
     required bool rememberMe,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (!rememberMe) {
-      await clearRememberPreference();
-      return;
-    }
-
-    final expiresAt = DateTime.now().add(rememberedDuration);
-    await prefs.setString(_rememberedUidKey, user.uid);
-    await prefs.setInt(_rememberUntilKey, expiresAt.millisecondsSinceEpoch);
+    final expiresAt = rememberMe
+        ? DateTime.now().add(rememberedDuration)
+        : null;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+      _rememberEnabledField: rememberMe,
+      _rememberUntilField: expiresAt == null
+          ? FieldValue.delete()
+          : Timestamp.fromDate(expiresAt),
+    }, SetOptions(merge: true));
   }
 
   static Future<bool> hasValidRememberedSession(User? user) async {
     if (user == null) return false;
 
-    final prefs = await SharedPreferences.getInstance();
-    final rememberedUid = prefs.getString(_rememberedUidKey);
-    final rememberUntilMs = prefs.getInt(_rememberUntilKey);
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+    final data = snapshot.data();
+    final enabled = data?[_rememberEnabledField] == true;
+    final rememberUntil = data?[_rememberUntilField];
 
-    if (rememberedUid != user.uid || rememberUntilMs == null) return false;
+    if (!enabled || rememberUntil is! Timestamp) return false;
 
-    final rememberUntil = DateTime.fromMillisecondsSinceEpoch(rememberUntilMs);
-    return DateTime.now().isBefore(rememberUntil);
+    return DateTime.now().isBefore(rememberUntil.toDate());
   }
 
   static Future<bool> keepOrEndCurrentSession(User? user) async {
@@ -53,8 +56,12 @@ class SessionService {
   }
 
   static Future<void> clearRememberPreference() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_rememberedUidKey);
-    await prefs.remove(_rememberUntilKey);
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+      _rememberEnabledField: false,
+      _rememberUntilField: FieldValue.delete(),
+    }, SetOptions(merge: true));
   }
 }
