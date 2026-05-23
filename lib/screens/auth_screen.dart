@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -10,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../data/firebase_service.dart';
 import '../data/notification_service.dart';
+import '../data/session_service.dart';
 // Removed unused import
 
 class AuthScreen extends StatefulWidget {
@@ -22,7 +22,7 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen>
     with SingleTickerProviderStateMixin {
   bool _isLoading = false;
-  StreamSubscription<User?>? _authSubscription;
+  bool _rememberMe = false;
   late final AnimationController _logoController;
 
   @override
@@ -32,16 +32,10 @@ class _AuthScreenState extends State<AuthScreen>
       vsync: this,
       duration: const Duration(milliseconds: 3600),
     )..repeat();
-    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
-      if (user != null && mounted) {
-        context.go('/home');
-      }
-    });
   }
 
   @override
   void dispose() {
-    _authSubscription?.cancel();
     _logoController.dispose();
     super.dispose();
   }
@@ -128,6 +122,7 @@ class _AuthScreenState extends State<AuthScreen>
   Future<void> _signInWithGoogle() async {
     setState(() => _isLoading = true);
     try {
+      await SessionService.prepareAuthPersistence(rememberMe: _rememberMe);
       UserCredential? credential;
       if (kIsWeb) {
         final authProvider = GoogleAuthProvider();
@@ -156,6 +151,10 @@ class _AuthScreenState extends State<AuthScreen>
       if (user != null && mounted) {
         final firebaseService = context.read<FirebaseService>();
         await firebaseService.createOrUpdateUser(user.uid, user.email ?? '');
+        await SessionService.saveRememberPreference(
+          user: user,
+          rememberMe: _rememberMe,
+        );
         await NotificationService.saveTokenToFirestore(user.uid);
 
         if (mounted) {
@@ -188,8 +187,9 @@ class _AuthScreenState extends State<AuthScreen>
     }
 
     setState(() => _isLoading = true);
+    final firebaseService = context.read<FirebaseService>();
     try {
-      final firebaseService = context.read<FirebaseService>();
+      await SessionService.prepareAuthPersistence(rememberMe: _rememberMe);
       UserCredential userCredential;
 
       try {
@@ -216,6 +216,10 @@ class _AuthScreenState extends State<AuthScreen>
         userCredential.user!.email!,
         'Global Admin',
         true,
+      );
+      await SessionService.saveRememberPreference(
+        user: userCredential.user!,
+        rememberMe: _rememberMe,
       );
       await NotificationService.saveTokenToFirestore(userCredential.user!.uid);
 
@@ -273,7 +277,7 @@ class _AuthScreenState extends State<AuthScreen>
                                 ),
                                 const SizedBox(height: 32),
                                 Text(
-                                  "EFOOTBALL™ 2025/26",
+                                  "EFOOTBALL™ 2026/27",
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     color: AppTheme.accentGreen,
@@ -299,6 +303,18 @@ class _AuthScreenState extends State<AuthScreen>
                                     color: AppTheme.accentGreen,
                                   )
                                 else ...[
+                                  ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 320,
+                                    ),
+                                    child: _RememberMeToggle(
+                                      value: _rememberMe,
+                                      onChanged: (value) {
+                                        setState(() => _rememberMe = value);
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(height: 18),
                                   ConstrainedBox(
                                     constraints: const BoxConstraints(
                                       maxWidth: 320,
@@ -609,6 +625,66 @@ class _PremiumAuthButton extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RememberMeToggle extends StatelessWidget {
+  const _RememberMeToggle({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => onChanged(!value),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+          ),
+          child: Row(
+            children: [
+              Switch.adaptive(
+                value: value,
+                activeThumbColor: AppTheme.accentGreen,
+                onChanged: onChanged,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Remember me for 30 days",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      "Keep this device signed in.",
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.64),
+                        fontSize: 11,
+                        height: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),

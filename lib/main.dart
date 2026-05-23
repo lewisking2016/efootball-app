@@ -13,6 +13,7 @@ import 'screens/matches_screen.dart';
 import 'screens/team_profile_screen.dart';
 import 'data/firebase_service.dart';
 import 'data/notification_service.dart';
+import 'data/session_service.dart';
 import 'models/team_model.dart';
 import 'models/standings_model.dart';
 import 'models/match_model.dart';
@@ -73,9 +74,10 @@ void main() async {
     debugPrint("Firebase init error: $e");
   }
 
-  // Explicitly enforce LOCAL persistence for web auto-login
+  // Default to session-only auth. The login screen upgrades this to LOCAL
+  // only when the user opts into the 30-day remember-me window.
   try {
-    await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+    await SessionService.prepareAuthPersistence(rememberMe: false);
   } catch (e) {
     debugPrint("Persistence init error: $e");
   }

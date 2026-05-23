@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../data/notification_service.dart';
+import '../data/session_service.dart';
 import '../theme/app_theme.dart';
 import '../data/firebase_service.dart';
 import '../models/app_user_model.dart';
@@ -112,13 +116,23 @@ class MoreScreen extends StatelessWidget {
                 _buildSettingTile(
                   Icons.notifications_outlined,
                   "Notification Settings",
+                  onTap: () => _showNotificationSettings(context, user),
                 ),
                 _buildSettingTile(
                   Icons.privacy_tip_outlined,
                   "Privacy & Terms",
+                  onTap: () => _showPrivacyAndTerms(context),
                 ),
-                _buildSettingTile(Icons.help_outline, "Help & Support"),
-                _buildSettingTile(Icons.info_outline, "About eFootball League"),
+                _buildSettingTile(
+                  Icons.help_outline,
+                  "Help & Support",
+                  onTap: () => _showHelpAndSupport(context),
+                ),
+                _buildSettingTile(
+                  Icons.info_outline,
+                  "About eFootball League",
+                  onTap: () => _showAboutApp(context),
+                ),
 
                 if (isAdmin)
                   _buildSettingTile(
@@ -134,6 +148,8 @@ class MoreScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: ElevatedButton.icon(
                     onPressed: () async {
+                      await SessionService.clearRememberPreference();
+                      await GoogleSignIn().signOut();
                       await FirebaseAuth.instance.signOut();
                       if (context.mounted) context.go('/');
                     },
@@ -199,6 +215,133 @@ class MoreScreen extends StatelessWidget {
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
         trailing: const Icon(Icons.chevron_right, color: Colors.grey),
         onTap: onTap,
+      ),
+    );
+  }
+
+  void _showNotificationSettings(BuildContext context, User? user) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text("Notification Settings"),
+        content: const Text(
+          "Turn on reminders for match day alerts and important league updates. You can also send a test notification to confirm your device is ready.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text("CLOSE"),
+          ),
+          TextButton(
+            onPressed: () async {
+              await NotificationService.initialize();
+              if (user != null) {
+                await NotificationService.saveTokenToFirestore(user.uid);
+              }
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Notifications are enabled.")),
+                );
+              }
+            },
+            child: const Text("ENABLE"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await NotificationService.showLocalNotification(
+                "eFootball League",
+                "Notifications are working on this device.",
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryPurple,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text("SEND TEST"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPrivacyAndTerms(BuildContext context) {
+    _showInfoDialog(
+      context,
+      title: "Privacy & Terms",
+      icon: Icons.privacy_tip_outlined,
+      body:
+          "Your account keeps your profile, claimed team, tournament entries, match results, and standings linked to your Firebase user ID. Signing out does not delete league data. Deleting your account removes your user profile and releases your claimed team.",
+    );
+  }
+
+  void _showHelpAndSupport(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text("Help & Support"),
+        content: const Text(
+          "Need help with login, claiming a team, submitting results, or managing a league? Send support a message and include your league name plus the account email shown on this page.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text("CLOSE"),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              final uri = Uri(
+                scheme: 'mailto',
+                path: 'support@efootballleague.app',
+                queryParameters: {
+                  'subject': 'eFootball League Support',
+                  'body': 'Hi, I need help with ',
+                },
+              );
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri);
+              }
+            },
+            icon: const Icon(Icons.email_outlined),
+            label: const Text("EMAIL SUPPORT"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAboutApp(BuildContext context) {
+    _showInfoDialog(
+      context,
+      title: "About eFootball League",
+      icon: Icons.info_outline,
+      body:
+          "eFootball League helps managers run tournaments, claim teams, submit match results, track standings, and keep league history in one place.",
+    );
+  }
+
+  void _showInfoDialog(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required String body,
+  }) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(icon, color: AppTheme.primaryPurple),
+            const SizedBox(width: 10),
+            Expanded(child: Text(title)),
+          ],
+        ),
+        content: Text(body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text("GOT IT"),
+          ),
+        ],
       ),
     );
   }
@@ -283,6 +426,7 @@ class MoreScreen extends StatelessWidget {
 
                 // 1. Cleanup Firestore first
                 await firebaseService.deleteUserAccount(user.uid);
+                await SessionService.clearRememberPreference();
 
                 // 2. Delete Firebase Auth account
                 try {

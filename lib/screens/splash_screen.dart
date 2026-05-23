@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../data/session_service.dart';
 import '../theme/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -46,8 +47,9 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _routeAfterAuthSettles() async {
     await Future.delayed(const Duration(milliseconds: 1800));
     final user = await FirebaseAuth.instance.authStateChanges().first;
+    final keepSession = await SessionService.keepOrEndCurrentSession(user);
     if (!mounted) return;
-    context.go(user == null ? '/login' : '/home');
+    context.go(keepSession ? '/home' : '/login');
   }
 
   @override
